@@ -189,8 +189,8 @@ function getDisplayMeta(config: CurrencyConfig): DisplayMeta {
     default:
       return {
         kind: 'currency',
-        symbol: '$',
-        currencyCode: 'USD',
+        symbol: '¥', // 美元到人民币UI展示调整
+        currencyCode: 'CNY', // 美元到人民币UI展示调整
         exchangeRate: 1,
       }
   }
@@ -201,8 +201,8 @@ function getBillingDisplayMeta(config: CurrencyConfig): DisplayMeta {
   if (meta.kind === 'tokens') {
     return {
       kind: 'currency',
-      symbol: '$',
-      currencyCode: 'USD',
+      symbol: '¥', // 美元到人民币UI展示调整
+      currencyCode: 'CNY', // 美元到人民币UI展示调整
       exchangeRate: 1,
     }
   }

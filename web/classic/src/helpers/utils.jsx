@@ -687,7 +687,7 @@ export const calculateModelPrice = ({
       };
     }
 
-    let symbol = '$';
+    let symbol = '¥'; // 美元到人民币UI展示调整
     if (currency === 'CNY') {
       symbol = '¥';
     } else if (currency === 'CUSTOM') {
@@ -901,7 +901,7 @@ export const formatDynamicPriceSummary = (billingExpr, t, groupRatio = 1) => {
   if (!billingExpr) return <span style={{ color: 'var(--semi-color-text-1)' }}>{t('动态计费')}</span>;
 
   const quotaDisplayType = localStorage.getItem('quota_display_type') || 'USD';
-  let symbol = '$';
+  let symbol = '¥'; // 美元到人民币UI展示调整
   let rate = 1;
   try {
     const s = JSON.parse(localStorage.getItem('status') || '{}');

@@ -1004,7 +1004,7 @@ export function renderQuotaNumberWithDigit(num, digits = 2) {
   if (quotaDisplayType === 'CNY') {
     return '¥' + num;
   } else if (quotaDisplayType === 'USD') {
-    return '$' + num;
+    return '¥' + num; // 美元到人民币UI展示调整
   } else if (quotaDisplayType === 'CUSTOM') {
     const statusStr = localStorage.getItem('status');
     let symbol = '¤';
@@ -1092,7 +1092,7 @@ export function renderQuotaWithAmount(amount) {
     } catch (e) {}
     return symbol + formattedAmount;
   }
-  return '$' + formattedAmount;
+  return '¥' + formattedAmount; // 美元到人民币UI展示调整
 }
 
 /**
@@ -1103,7 +1103,7 @@ export function getCurrencyConfig() {
   const quotaDisplayType = localStorage.getItem('quota_display_type') || 'USD';
   const statusStr = localStorage.getItem('status');
 
-  let symbol = '$';
+  let symbol = '¥'; // 美元到人民币UI展示调整
   let rate = 1;
 
   if (quotaDisplayType === 'CNY') {
@@ -1147,7 +1147,7 @@ export function renderQuota(quota, digits = 2) {
     return renderNumber(quota);
   }
   const resultUSD = quota / quotaPerUnit;
-  let symbol = '$';
+  let symbol = '¥'; // 美元到人民币UI展示调整
   let value = resultUSD;
   if (quotaDisplayType === 'CNY') {
     const statusStr = localStorage.getItem('status');

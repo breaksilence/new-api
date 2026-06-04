@@ -82,7 +82,7 @@ function renderQuotaCompat(rawQuota: number, digits = 4): string {
   if (meta.kind === 'tokens') return rawQuota.toLocaleString()
   const usd = rawQuota / config.quotaPerUnit
   const rate = 'exchangeRate' in meta ? meta.exchangeRate : 1
-  const symbol = 'symbol' in meta ? meta.symbol : '$'
+  const symbol = 'symbol' in meta ? meta.symbol : '¥' // 美元到人民币UI展示调整
   const value = usd * rate
   const fixed = value.toFixed(digits)
   if (parseFloat(fixed) === 0 && rawQuota > 0 && value > 0) {

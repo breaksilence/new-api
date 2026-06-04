@@ -172,7 +172,7 @@ export function DynamicPricingBreakdown({
         rate: currency.customCurrencyExchangeRate || 1,
       }
     }
-    return { symbol: '$', rate: 1 }
+    return { symbol: '¥', rate: 1 } // 美元到人民币UI展示调整
   }, [currency])
 
   const { tiers, ruleGroups } = useMemo(() => {

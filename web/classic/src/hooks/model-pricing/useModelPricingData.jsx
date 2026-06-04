@@ -41,7 +41,7 @@ export const useModelPricingData = () => {
   const [filterTag, setFilterTag] = useState('all'); // 模型标签筛选: 'all' | string
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState('CNY'); // 美元到人民币UI展示调整
   const [showWithRecharge, setShowWithRecharge] = useState(false);
   const [tokenUnit, setTokenUnit] = useState('M');
   const [models, setModels] = useState([]);
@@ -91,7 +91,7 @@ export const useModelPricingData = () => {
   useEffect(() => {
     if (siteDisplayType === 'TOKENS') {
       setShowWithRecharge(false);
-      setCurrency('USD');
+      setCurrency('CNY'); // 美元到人民币UI展示调整
     }
   }, [siteDisplayType]);
 

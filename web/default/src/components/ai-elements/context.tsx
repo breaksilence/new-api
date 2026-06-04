@@ -234,7 +234,7 @@ export const ContextContentFooter = ({
     : undefined
   const totalCost = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'CNY', // 美元到人民币UI展示调整
   }).format(costUSD ?? 0)
 
   return (
@@ -282,7 +282,7 @@ export const ContextInputUsage = ({
     : undefined
   const inputCostText = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'CNY', // 美元到人民币UI展示调整
   }).format(inputCost ?? 0)
 
   return (
@@ -323,7 +323,7 @@ export const ContextOutputUsage = ({
     : undefined
   const outputCostText = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'CNY', // 美元到人民币UI展示调整
   }).format(outputCost ?? 0)
 
   return (
@@ -364,7 +364,7 @@ export const ContextReasoningUsage = ({
     : undefined
   const reasoningCostText = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'CNY', // 美元到人民币UI展示调整
   }).format(reasoningCost ?? 0)
 
   return (
@@ -405,7 +405,7 @@ export const ContextCacheUsage = ({
     : undefined
   const cacheCostText = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'CNY', // 美元到人民币UI展示调整
   }).format(cacheCost ?? 0)
 
   return (
