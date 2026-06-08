@@ -470,7 +470,7 @@ export default function ModelPricingEditor({
                       <PriceInput
                         label={t('输入价格')}
                         value={selectedModel.inputPrice}
-                        placeholder={t('输入 $/1M tokens')}
+                        placeholder={t('输入 ¥/1M tokens')} // 美元到人民币UI展示调整
                         onChange={(value) => handleNumericFieldChange('inputPrice', value)}
                       />
                       {selectedModel.completionRatioLocked ? (
@@ -492,7 +492,7 @@ export default function ModelPricingEditor({
                       <PriceInput
                         label={t('补全价格')}
                         value={selectedModel.completionPrice}
-                        placeholder={t('输入 $/1M tokens')}
+                        placeholder={t('输入 ¥/1M tokens')} // 美元到人民币UI展示调整
                         onChange={(value) =>
                           handleNumericFieldChange('completionPrice', value)
                         }
@@ -535,7 +535,7 @@ export default function ModelPricingEditor({
                       <PriceInput
                         label={t('缓存读取价格')}
                         value={selectedModel.cachePrice}
-                        placeholder={t('输入 $/1M tokens')}
+                        placeholder={t('输入 ¥/1M tokens')} // 美元到人民币UI展示调整
                         onChange={(value) => handleNumericFieldChange('cachePrice', value)}
                         headerAction={
                           <Switch
@@ -557,7 +557,7 @@ export default function ModelPricingEditor({
                       <PriceInput
                         label={t('缓存创建价格')}
                         value={selectedModel.createCachePrice}
-                        placeholder={t('输入 $/1M tokens')}
+                        placeholder={t('输入 ¥/1M tokens')} // 美元到人民币UI展示调整
                         onChange={(value) =>
                           handleNumericFieldChange('createCachePrice', value)
                         }
@@ -604,7 +604,7 @@ export default function ModelPricingEditor({
                       <PriceInput
                         label={t('图片输入价格')}
                         value={selectedModel.imagePrice}
-                        placeholder={t('输入 $/1M tokens')}
+                        placeholder={t('输入 ¥/1M tokens')} // 美元到人民币UI展示调整
                         onChange={(value) => handleNumericFieldChange('imagePrice', value)}
                         headerAction={
                           <Switch
@@ -626,7 +626,7 @@ export default function ModelPricingEditor({
                       <PriceInput
                         label={t('音频输入价格')}
                         value={selectedModel.audioInputPrice}
-                        placeholder={t('输入 $/1M tokens')}
+                        placeholder={t('输入 ¥/1M tokens')} // 美元到人民币UI展示调整
                         onChange={(value) =>
                           handleNumericFieldChange('audioInputPrice', value)
                         }
@@ -656,7 +656,7 @@ export default function ModelPricingEditor({
                       <PriceInput
                         label={t('音频补全价格')}
                         value={selectedModel.audioOutputPrice}
-                        placeholder={t('输入 $/1M tokens')}
+                        placeholder={t('输入 ¥/1M tokens')} // 美元到人民币UI展示调整
                         onChange={(value) =>
                           handleNumericFieldChange('audioOutputPrice', value)
                         }

@@ -505,7 +505,7 @@ export default function SettingsPaymentGatewayWaffo(props) {
               <Form.Input
                 field='WaffoCurrency'
                 label={t('货币')}
-                placeholder='USD'
+                placeholder='USD' /* Waffo真实结算货币 */
                 extraText={t('Waffo 当前使用 USD 结算')}
                 disabled
               />
@@ -514,8 +514,8 @@ export default function SettingsPaymentGatewayWaffo(props) {
               <Form.InputNumber
                 field='WaffoUnitPrice'
                 precision={2}
-                label={t('充值价格（x元/美金）')}
-                placeholder={t('例如：7，就是7元/美金')}
+                label={t('充值价格')}
+                placeholder={t('例如：7，就是7元')}
                 extraText={t('按 1 美元对应的站内价格填写')}
                 min={0}
               />
@@ -523,9 +523,9 @@ export default function SettingsPaymentGatewayWaffo(props) {
             <Col xs={24} sm={24} md={8} lg={8} xl={8}>
               <Form.InputNumber
                 field='WaffoMinTopUp'
-                label={t('最低充值美元数量')}
-                placeholder={t('例如：2，就是最低充值2$')}
-                extraText={t('用户单次最少可充值的美元数量')}
+                label={t('最低充值数量')}
+                placeholder={t('例如：2，就是最低充值2¥')}
+                extraText={t('用户单次最少可充值的数量')}
                 min={1}
               />
             </Col>

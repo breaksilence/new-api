@@ -185,15 +185,15 @@ export default function GeneralSettings(props) {
   }, [quotaDisplayType, t]);
 
   const previewText = useMemo(() => {
-    if (quotaDisplayType === 'USD') return '$1.00';
+    if (quotaDisplayType === 'USD') return '¥1.00'; // 美元到人民币UI展示调整
     const rate = parseFloat(combinedRate);
     if (!rate || isNaN(rate)) return t('请输入汇率');
-    if (quotaDisplayType === 'CNY') return `$1.00 → ¥${rate.toFixed(2)}`;
+    if (quotaDisplayType === 'CNY') return `¥1.00 → ¥${rate.toFixed(2)}`; // 美元到人民币UI展示调整
     if (quotaDisplayType === 'TOKENS')
-      return `$1.00 → ${Number(rate).toLocaleString()} Tokens`;
+      return `¥1.00 → ${Number(rate).toLocaleString()} Tokens`; // 美元到人民币UI展示调整
     if (quotaDisplayType === 'CUSTOM') {
       const symbol = inputs['general_setting.custom_currency_symbol'] || '¤';
-      return `$1.00 → ${symbol}${rate.toFixed(2)}`;
+      return `¥1.00 → ${symbol}${rate.toFixed(2)}`; // 美元到人民币UI展示调整
     }
     return '';
   }, [quotaDisplayType, combinedRate, inputs, t]);
@@ -282,11 +282,11 @@ export default function GeneralSettings(props) {
                     'general_setting.quota_display_type',
                   )}
                 >
+                  <Form.Select.Option value='CNY'> {/* 美元到人民币UI展示调整: CNY上移第一位 */}
+                    CNY (¥)
+                  </Form.Select.Option>
                   <Form.Select.Option value='USD'>
                     USD ($)
-                  </Form.Select.Option>
-                  <Form.Select.Option value='CNY'>
-                    CNY (¥)
                   </Form.Select.Option>
                   {showTokensOption && (
                     <Form.Select.Option value='TOKENS'>
@@ -302,7 +302,7 @@ export default function GeneralSettings(props) {
                 <Col xs={24} sm={12} md={8} lg={8} xl={8}>
                   <Form.Slot label={rateLabel}>
                     <Input
-                      prefix='1 USD = '
+                      prefix='1 CNY = ' // 美元到人民币UI展示调整
                       suffix={rateSuffix}
                       value={combinedRate}
                       onChange={onCombinedRateChange}

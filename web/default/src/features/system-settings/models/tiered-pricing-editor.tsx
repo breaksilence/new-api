@@ -99,7 +99,7 @@ import {
   tryParseVisualConfig,
 } from '@/features/pricing/lib/tier-expr'
 
-const PRICE_SUFFIX = '$/1M tokens'
+const PRICE_SUFFIX = '¥/1M tokens' // 美元到人民币UI展示调整
 const CACHE_PRICE_VARS = BILLING_EXTRA_VARS.filter(
   (variable) => variable.group === 'cache'
 )

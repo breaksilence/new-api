@@ -182,7 +182,7 @@ export function CreemProductDialog({
                     <FormLabel>{t('Currency')}</FormLabel>
                     <Select
                       items={[
-                        { value: 'USD', label: 'USD ($)' },
+                        { value: 'USD', label: 'USD ($)' }, // Creem真实结算货币，不能伪装
                         { value: 'EUR', label: 'EUR (€)' },
                       ]}
                       onValueChange={field.onChange}
@@ -195,7 +195,7 @@ export function CreemProductDialog({
                       </FormControl>
                       <SelectContent alignItemWithTrigger={false}>
                         <SelectGroup>
-                          <SelectItem value='USD'>USD ($)</SelectItem>
+                          <SelectItem value='USD'>USD ($)</SelectItem> {/* Creem真实结算货币 */}
                           <SelectItem value='EUR'>EUR (€)</SelectItem>
                         </SelectGroup>
                       </SelectContent>

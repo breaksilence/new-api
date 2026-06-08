@@ -60,7 +60,7 @@ import {
 
 const { Text } = Typography;
 
-const PRICE_SUFFIX = '$/1M tokens';
+const PRICE_SUFFIX = '¥/1M tokens'; // 美元到人民币UI展示调整
 
 function unitCostToPrice(uc) {
   return Number(uc) || 0;
@@ -1271,7 +1271,7 @@ p 和 c 是兜底变量，代表所有没有被表达式单独定价的 token。
 
 ### 价格系数
 
-表达式中的数字系数是 $/1M tokens 的价格。例如 p * 2.5 表示输入 $2.50/1M tokens。
+表达式中的数字系数是 ¥/1M tokens 的价格。例如 p * 2.5 表示输入 ¥2.50/1M tokens。
 
 ## 表达式示例
 
@@ -1305,7 +1305,7 @@ len <= 128000
 2. tier 名称用英文，如 "base"、"standard"、"long_context"
 3. 阶梯条件用 len（不要用 p），支持 <、<=、>、>=
 4. 多档用嵌套三元运算符：条件1 ? tier(...) : (条件2 ? tier(...) : tier(...))
-5. 价格系数直接写供应商官方 $/1M tokens 价格
+5. 价格系数直接写供应商官方 ¥/1M tokens 价格 // 美元到人民币UI展示调整
 6. 不需要缓存/图片/音频单独定价时可以不写对应变量，它们的 token 会自动包含在 p/c 中
 
 请根据用户提供的模型信息和定价需求，生成计费表达式。`;

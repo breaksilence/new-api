@@ -385,14 +385,14 @@ export default function SettingsPaymentGatewayCreem(props) {
               size='large'
               className='w-full'
             >
-              <Select.Option value='USD'>{t('USD (美元)')}</Select.Option>
+              <Select.Option value='USD'>{t('USD (美元)')}</Select.Option> {/* Creem真实结算货币，不能伪装 */}
               <Select.Option value='EUR'>{t('EUR (欧元)')}</Select.Option>
             </Select>
           </div>
           <div>
             <Text strong className='block mb-2'>
               {t('价格')} (
-              {productForm.currency === 'EUR' ? t('欧元') : t('美元')})
+              {productForm.currency === 'EUR' ? t('欧元') : t('美元')}) {/* Creem真实结算货币 */}
             </Text>
             <InputNumber
               value={productForm.price}

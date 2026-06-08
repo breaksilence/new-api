@@ -189,7 +189,7 @@ export const useModelPricingData = () => {
     } else if (currency === 'CUSTOM') {
       return `${customCurrencySymbol}${(priceInUSD * customExchangeRate).toFixed(3)}`;
     }
-    return `$${priceInUSD.toFixed(3)}`;
+    return `¥${priceInUSD.toFixed(3)}`; // 美元到人民币UI展示调整
   };
 
   const setModelsFormat = (models, groupRatio, vendorMap) => {

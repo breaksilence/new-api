@@ -136,7 +136,7 @@ export function AmountDiscountDialog({
               name='amount'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('Recharge Amount (USD)')}</FormLabel>
+                  <FormLabel>{t('Recharge Amount (CNY)')}</FormLabel> {/* 美元到人民币UI展示调整 */}
                   <FormControl>
                     <Input
                       type='number'

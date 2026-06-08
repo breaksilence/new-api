@@ -324,14 +324,14 @@ function buildPreviewRows(
     {
       key: 'inputPrice',
       label: t('Input price'),
-      value: promptPrice ? `$${promptPrice}` : t('Empty'),
+      value: promptPrice ? `¥${promptPrice}` : t('Empty'), // 美元到人民币UI展示调整
     },
     {
       key: 'completion',
       label: t('Completion price'),
       value:
         laneEnabled.completion && lanePrices.completion
-          ? `$${lanePrices.completion}`
+          ? `¥${lanePrices.completion}` // 美元到人民币UI展示调整
           : t('Empty'),
     },
     {
@@ -339,7 +339,7 @@ function buildPreviewRows(
       label: t('Cache read price'),
       value:
         laneEnabled.cache && lanePrices.cache
-          ? `$${lanePrices.cache}`
+          ? `¥${lanePrices.cache}` // 美元到人民币UI展示调整
           : t('Empty'),
     },
     {
@@ -347,7 +347,7 @@ function buildPreviewRows(
       label: t('Cache write price'),
       value:
         laneEnabled.createCache && lanePrices.createCache
-          ? `$${lanePrices.createCache}`
+          ? `¥${lanePrices.createCache}` // 美元到人民币UI展示调整
           : t('Empty'),
     },
     {
@@ -355,7 +355,7 @@ function buildPreviewRows(
       label: t('Image input price'),
       value:
         laneEnabled.image && lanePrices.image
-          ? `$${lanePrices.image}`
+          ? `¥${lanePrices.image}` // 美元到人民币UI展示调整
           : t('Empty'),
     },
     {
@@ -363,7 +363,7 @@ function buildPreviewRows(
       label: t('Audio input price'),
       value:
         laneEnabled.audioInput && lanePrices.audioInput
-          ? `$${lanePrices.audioInput}`
+          ? `¥${lanePrices.audioInput}` // 美元到人民币UI展示调整
           : t('Empty'),
     },
     {
@@ -371,7 +371,7 @@ function buildPreviewRows(
       label: t('Audio output price'),
       value:
         laneEnabled.audioOutput && lanePrices.audioOutput
-          ? `$${lanePrices.audioOutput}`
+          ? `¥${lanePrices.audioOutput}` // 美元到人民币UI展示调整
           : t('Empty'),
     },
   ]
@@ -823,7 +823,7 @@ export function ModelPricingEditorPanel({
                         onChange={handlePromptPriceChange}
                       />
                       <FieldDescription>
-                        {t('USD price per 1M input tokens.')}
+                        {t('CNY price per 1M input tokens.')} // 美元到人民币UI展示调整
                       </FieldDescription>
                     </Field>
 
@@ -886,7 +886,7 @@ export function ModelPricingEditorPanel({
                         </FormControl>
                         <FormDescription>
                           {t(
-                            'Cost in USD per request, regardless of tokens used.'
+                            'Cost in CNY per request, regardless of tokens used.' // 美元到人民币UI展示调整
                           )}
                         </FormDescription>
                         <FormMessage />
@@ -1037,7 +1037,7 @@ function PriceLane(props: {
       />
       <p className='text-muted-foreground text-xs'>
         {props.enabled
-          ? t('USD price per 1M tokens.')
+          ? t('CNY price per 1M tokens.') // 美元到人民币UI展示调整
           : t('Disabled lanes are omitted on save.')}
       </p>
     </SettingsControlGroup>

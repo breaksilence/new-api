@@ -191,8 +191,8 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                   <FormLabel>{t('Display Mode')}</FormLabel>
                   <Select
                     items={[
+                      { value: 'CNY', label: t('CNY') }, // 美元到人民币UI展示调整: CNY上移第一位
                       { value: 'USD', label: t('USD') },
-                      { value: 'CNY', label: t('CNY') },
                       { value: 'CUSTOM', label: t('Custom Currency') },
                       { value: 'TOKENS', label: t('Tokens Only') },
                     ]}
@@ -206,8 +206,8 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                     </FormControl>
                     <SelectContent alignItemWithTrigger={false}>
                       <SelectGroup>
+                        <SelectItem value='CNY'>{t('CNY')}</SelectItem> {/* 美元到人民币UI展示调整: CNY上移第一位 */}
                         <SelectItem value='USD'>{t('USD')}</SelectItem>
-                        <SelectItem value='CNY'>{t('CNY')}</SelectItem>
                         <SelectItem value='CUSTOM'>
                           {t('Custom Currency')}
                         </SelectItem>
@@ -235,10 +235,10 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                   <FormItem>
                     <FormLabel>
                       {displayType === 'CNY'
-                        ? t('CNY per USD')
+                        ? t('Rate')
                         : displayType === 'USD'
-                          ? t('USD Exchange Rate')
-                          : t('USD Exchange Rate')}
+                          ? t('Exchange Rate')
+                          : t('Exchange Rate')} {/* 美元到人民币UI展示调整 */}
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -290,7 +290,7 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                   name='general_setting.custom_currency_exchange_rate'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('Units per USD')}</FormLabel>
+                      <FormLabel>{t('Units per CNY')}</FormLabel> {/* 美元到人民币UI展示调整 */}
                       <FormControl>
                         <Input
                           type='number'
@@ -306,11 +306,11 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                           name={field.name}
                           onBlur={field.onBlur}
                           ref={field.ref}
-                          placeholder={t('e.g. 8 means 1 USD = 8 units')}
+                          placeholder={t('e.g. 8 means 1 CNY = 8 units')} {/* 美元到人民币UI展示调整 */}
                         />
                       </FormControl>
                       <FormDescription>
-                        {t('Conversion rate from USD to your custom currency')}
+                        {t('Conversion rate from CNY to your custom currency')} {/* 美元到人民币UI展示调整 */}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

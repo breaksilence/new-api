@@ -276,7 +276,7 @@ export function WaffoSettingsSection({
             <Input value={values.WaffoCurrency} disabled />
           </div>
           <div className='grid gap-1.5'>
-            <Label>{t('Unit price (USD)')}</Label>
+            <Label>{t('Unit price (CNY)')}</Label> {/* 美元到人民币UI展示调整 */}
             <Input
               type='number'
               step={0.1}

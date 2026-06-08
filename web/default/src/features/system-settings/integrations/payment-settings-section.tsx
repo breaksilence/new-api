@@ -871,7 +871,7 @@ export function PaymentSettingsSection({
                 name='Price'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('Price (local currency / USD)')}</FormLabel>
+                    <FormLabel>{t('Price (local currency / CNY)')}</FormLabel> {/* 美元到人民币UI展示调整 */}
                     <FormControl>
                       <Input
                         type='number'
@@ -895,7 +895,7 @@ export function PaymentSettingsSection({
                 name='MinTopUp'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('Minimum top-up (USD)')}</FormLabel>
+                    <FormLabel>{t('Minimum top-up (CNY)')}</FormLabel> {/* 美元到人民币UI展示调整 */}
                     <FormControl>
                       <Input
                         type='number'
@@ -905,7 +905,7 @@ export function PaymentSettingsSection({
                       />
                     </FormControl>
                     <FormDescription>
-                      {t('Smallest USD amount users can recharge (Epay)')}
+                      {t('Smallest CNY amount users can recharge (Epay)')} {/* 美元到人民币UI展示调整 */}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -1302,7 +1302,7 @@ export function PaymentSettingsSection({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {t('Unit price (local currency / USD)')}
+                      {t('Unit price (local currency / CNY)')} {/* 美元到人民币UI展示调整 */}
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -1313,7 +1313,7 @@ export function PaymentSettingsSection({
                       />
                     </FormControl>
                     <FormDescription>
-                      {t('e.g., 8 means 8 local currency per USD')}
+                      {t('e.g., 8 means 8 local currency per CNY')} {/* 美元到人民币UI展示调整 */}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -1325,7 +1325,7 @@ export function PaymentSettingsSection({
                 name='StripeMinTopUp'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('Minimum top-up (USD)')}</FormLabel>
+                    <FormLabel>{t('Minimum top-up (CNY)')}</FormLabel> {/* 美元到人民币UI展示调整 */}
                     <FormControl>
                       <Input
                         type='number'
@@ -1335,7 +1335,7 @@ export function PaymentSettingsSection({
                       />
                     </FormControl>
                     <FormDescription>
-                      {t('Minimum recharge amount in USD')}
+                      {t('Minimum recharge amount in CNY')} {/* 美元到人民币UI展示调整 */}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

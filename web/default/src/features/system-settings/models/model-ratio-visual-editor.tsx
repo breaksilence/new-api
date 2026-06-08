@@ -147,7 +147,7 @@ const getPriceSummary = (row: ModelRow, t: (key: string) => string) => {
     return getExpressionSummary(row, t)
   }
   if (row.billingMode === 'per-request') {
-    return row.price ? `$${row.price} / ${t('request')}` : t('Unset price')
+    return row.price ? `¥${row.price} / ${t('request')}` : t('Unset price') // 美元到人民币UI展示调整
   }
 
   const inputPrice = ratioToPrice(row.ratio)
@@ -163,8 +163,8 @@ const getPriceSummary = (row: ModelRow, t: (key: string) => string) => {
   ].filter(hasValue).length
 
   return extraCount > 0
-    ? `${t('Input')} $${inputPrice} · ${extraCount} ${t('extras')}`
-    : `${t('Input')} $${inputPrice}`
+    ? `${t('Input')} ¥${inputPrice} · ${extraCount} ${t('extras')}` // 美元到人民币UI展示调整
+    : `${t('Input')} ¥${inputPrice}` // 美元到人民币UI展示调整
 }
 
 const getPriceDetail = (row: ModelRow, t: (key: string) => string) => {
@@ -182,11 +182,11 @@ const getPriceDetail = (row: ModelRow, t: (key: string) => string) => {
 
   const details = [
     row.completionRatio &&
-      `${t('Output')} $${ratioToPrice(row.completionRatio, inputPrice)}`,
+      `${t('Output')} ¥${ratioToPrice(row.completionRatio, inputPrice)}`, // 美元到人民币UI展示调整
     row.cacheRatio &&
-      `${t('Cache')} $${ratioToPrice(row.cacheRatio, inputPrice)}`,
+      `${t('Cache')} ¥${ratioToPrice(row.cacheRatio, inputPrice)}`, // 美元到人民币UI展示调整
     row.createCacheRatio &&
-      `${t('Cache write')} $${ratioToPrice(row.createCacheRatio, inputPrice)}`,
+      `${t('Cache write')} ¥${ratioToPrice(row.createCacheRatio, inputPrice)}`, // 美元到人民币UI展示调整
   ].filter(Boolean)
 
   return details.length > 0 ? details.join(' · ') : t('Base input price only')

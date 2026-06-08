@@ -267,7 +267,7 @@ export const ToolPriceSettings = memo(function ToolPriceSettings({
               <TableRow>
                 <TableHead>{t('Tool identifier')}</TableHead>
                 <TableHead className='w-[200px]'>
-                  {t('Price ($/1K calls)')}
+                  {t('Price (¥/1K calls)')} {/* 美元到人民币UI展示调整 */}
                 </TableHead>
                 <TableHead className='w-[80px] text-right'>
                   {t('Actions')}

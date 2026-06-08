@@ -61,8 +61,8 @@ const PricingDisplaySettings = ({
   ];
 
   const currencyItems = [
+    { value: 'CNY', label: 'CNY (¥)' }, // 美元到人民币UI展示调整: CNY上移第一位
     { value: 'USD', label: 'USD ($)' },
-    { value: 'CNY', label: 'CNY (¥)' },
     { value: 'CUSTOM', label: t('自定义货币') },
   ];
 
