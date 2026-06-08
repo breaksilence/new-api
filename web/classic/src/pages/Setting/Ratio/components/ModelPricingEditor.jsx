@@ -445,7 +445,7 @@ export default function ModelPricingEditor({
                     label={t('固定价格')}
                     value={selectedModel.fixedPrice}
                     placeholder={t('输入每次调用价格')}
-                    suffix={t('$/次')}
+                    suffix={t('¥/次')} // 美元到人民币UI展示调整
                     onChange={(value) => handleNumericFieldChange('fixedPrice', value)}
                     extraText={t('适合 MJ / 任务类等按次收费模型。')}
                   />

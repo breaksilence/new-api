@@ -8,7 +8,7 @@
         " 秒": " 秒",
         " 秒。": "",
         "$/1M tokens": "$/1M tokens",
-        "$/次": "",
+        "¥/次": "",
         "(筛选后显示 {{count}} 条)_other": "(篩選後顯示 {{count}} 條)",
         "(输入 {{input}} tokens / 1M tokens * {{symbol}}{{price}}": "(輸入 {{input}} tokens / 1M tokens * {{symbol}}{{price}}",
         "(输入 {{nonAudioInput}} tokens / 1M tokens * {{symbol}}{{price}} + 音频输入 {{audioInput}} tokens / 1M tokens * {{symbol}}{{audioPrice}}": "(輸入 {{nonAudioInput}} tokens / 1M tokens * {{symbol}}{{price}} + 音訊輸入 {{audioInput}} tokens / 1M tokens * {{symbol}}{{audioPrice}}",

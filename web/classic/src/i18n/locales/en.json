@@ -10,7 +10,7 @@
         " 秒": "s",
         " 秒。": " seconds.",
         "$/1M tokens": "$/1M tokens",
-        "$/次": "",
+        "¥/次": "",
         "(筛选后显示 {{count}} 条)_one": "(Showing {{count}} item after filtering)",
         "(筛选后显示 {{count}} 条)_other": "(Showing {{count}} items after filtering)",
         "(输入 {{input}} tokens / 1M tokens * {{symbol}}{{price}}": "(Input {{input}} tokens / 1M tokens * {{symbol}}{{price}}",
