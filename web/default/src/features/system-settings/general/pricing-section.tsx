@@ -306,8 +306,8 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                           name={field.name}
                           onBlur={field.onBlur}
                           ref={field.ref}
-                          placeholder={t('e.g. 8 means 1 CNY = 8 units')} {/* 美元到人民币UI展示调整 */}
-                        />
+                          placeholder={t('e.g. 8 means 1 CNY = 8 units')}
+                        /> {/* 美元到人民币UI展示调整 */}
                       </FormControl>
                       <FormDescription>
                         {t('Conversion rate from CNY to your custom currency')} {/* 美元到人民币UI展示调整 */}
