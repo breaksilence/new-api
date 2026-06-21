@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '@douyinfe/semi-ui';
 import {
@@ -94,7 +94,7 @@ export const useLogsData = () => {
   // Form state
   const [formApi, setFormApi] = useState(null);
   let now = new Date();
-  const formInitValues = {
+  const formInitValues = useMemo(() => ({
     username: '',
     token_name: '',
     model_name: '',
@@ -106,7 +106,7 @@ export const useLogsData = () => {
       timestamp2string(now.getTime() / 1000 + 3600),
     ],
     logType: '0',
-  };
+  }), []);
 
   // Get default column visibility based on user role
   const getDefaultColumnVisibility = () => {
@@ -741,6 +741,17 @@ export const useLogsData = () => {
       request_id,
       logType: formLogType,
     } = getFormValues();
+
+    if (!start_timestamp || !end_timestamp) {
+      showError(t('请选择开始时间和结束时间'));
+      setLoading(false);
+      return;
+    }
+    if (Date.parse(start_timestamp) > Date.parse(end_timestamp)) {
+      showError(t('开始时间不能大于结束时间'));
+      setLoading(false);
+      return;
+    }
 
     const currentLogType =
       customLogType !== null

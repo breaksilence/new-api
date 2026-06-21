@@ -38,7 +38,6 @@ func authHelper(c *gin.Context, minRole int) {
 	username := session.Get("username")
 	role := session.Get("role")
 	id := session.Get("id")
-	status := session.Get("status")
 	useAccessToken := false
 	if username == nil {
 		// Check access token
@@ -81,7 +80,6 @@ func authHelper(c *gin.Context, minRole int) {
 			username = user.Username
 			role = user.Role
 			id = user.Id
-			status = user.Status
 			useAccessToken = true
 		} else {
 			c.JSON(http.StatusOK, gin.H{
@@ -120,8 +118,18 @@ func authHelper(c *gin.Context, minRole int) {
 		c.Abort()
 		return
 	}
-	if status.(int) == common.UserStatusDisabled {
-		c.JSON(http.StatusOK, gin.H{
+	userCache, err := model.GetUserCache(id.(int))
+	if err != nil {
+		common.SysLog(fmt.Sprintf("authHelper GetUserCache error for user %d: %v", id, err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": common.TranslateMessage(c, i18n.MsgDatabaseError),
+		})
+		c.Abort()
+		return
+	}
+	if userCache.Status == common.UserStatusDisabled {
+		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"message": common.TranslateMessage(c, i18n.MsgAuthUserBanned),
 		})
@@ -196,7 +204,8 @@ func TokenOrUserAuth() func(c *gin.Context) {
 		// Try session auth first (dashboard users)
 		session := sessions.Default(c)
 		if id := session.Get("id"); id != nil {
-			if status, ok := session.Get("status").(int); ok && status == common.UserStatusEnabled {
+			userCache, err := model.GetUserCache(id.(int))
+			if err == nil && userCache.Status == common.UserStatusEnabled {
 				c.Set("id", id)
 				c.Next()
 				return

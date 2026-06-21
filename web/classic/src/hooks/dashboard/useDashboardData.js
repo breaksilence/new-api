@@ -252,13 +252,22 @@ export const useDashboardData = (userState, userDispatch, statusState) => {
 
   const handleSearchConfirm = useCallback(
     async (updateChartDataCallback) => {
+      const { start_timestamp, end_timestamp } = inputs;
+      if (!start_timestamp || !end_timestamp) {
+        showError(t('请选择开始时间和结束时间'));
+        return;
+      }
+      if (Date.parse(start_timestamp) > Date.parse(end_timestamp)) {
+        showError(t('开始时间不能大于结束时间'));
+        return;
+      }
       const data = await refresh();
       if (data && data.length > 0 && updateChartDataCallback) {
         updateChartDataCallback(data);
       }
       setSearchModalVisible(false);
     },
-    [refresh],
+    [refresh, inputs, t],
   );
 
   // ========== Effects ==========
