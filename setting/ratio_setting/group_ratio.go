@@ -117,6 +117,9 @@ func CheckGroupRatio(jsonStr string) error {
 		return err
 	}
 	for name, ratio := range checkGroupRatio {
+		if name == "" {
+			return errors.New("分组名称不能为空")
+		}
 		if ratio < 0 {
 			return errors.New("group ratio must be not less than 0: " + name)
 		}
