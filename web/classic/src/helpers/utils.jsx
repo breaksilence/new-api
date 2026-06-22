@@ -241,21 +241,28 @@ export function timestamp2string1(
   if (dataExportDefaultTime === 'hour') {
     str += ' ' + hour + ':00';
   } else if (dataExportDefaultTime === 'week') {
-    let nextWeek = new Date(timestamp * 1000 + 6 * 24 * 60 * 60 * 1000);
-    let nextWeekYear = nextWeek.getFullYear();
-    let nextMonth = (nextWeek.getMonth() + 1).toString();
-    let nextDay = nextWeek.getDate().toString();
-    if (nextMonth.length === 1) {
-      nextMonth = '0' + nextMonth;
-    }
-    if (nextDay.length === 1) {
-      nextDay = '0' + nextDay;
-    }
-    // 周视图结束日期也仅在跨年时显示年份
-    let nextStr = showYear
-      ? nextWeekYear + '-' + nextMonth + '-' + nextDay
-      : nextMonth + '-' + nextDay;
-    str += ' - ' + nextStr;
+    // Normalize to Monday so all days in the same ISO week share one key
+    let startOfWeek = new Date(timestamp * 1000)
+    let dow = startOfWeek.getDay()
+    let diffToMonday = dow === 0 ? 6 : dow - 1
+    startOfWeek.setDate(startOfWeek.getDate() - diffToMonday)
+    startOfWeek.setHours(0, 0, 0, 0)
+    let mondayYear = startOfWeek.getFullYear()
+    let mondayMonth = (startOfWeek.getMonth() + 1).toString()
+    let mondayDay = startOfWeek.getDate().toString()
+    if (mondayMonth.length === 1) mondayMonth = '0' + mondayMonth
+    if (mondayDay.length === 1) mondayDay = '0' + mondayDay
+
+    let endOfWeek = new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000)
+    let sundayYear = endOfWeek.getFullYear()
+    let sundayMonth = (endOfWeek.getMonth() + 1).toString()
+    let sundayDay = endOfWeek.getDate().toString()
+    if (sundayMonth.length === 1) sundayMonth = '0' + sundayMonth
+    if (sundayDay.length === 1) sundayDay = '0' + sundayDay
+
+    let mondayStr = showYear ? mondayYear + '-' + mondayMonth + '-' + mondayDay : mondayMonth + '-' + mondayDay
+    let sundayStr = showYear ? sundayYear + '-' + sundayMonth + '-' + sundayDay : sundayMonth + '-' + sundayDay
+    str = mondayStr + ' - ' + sundayStr
   }
   return str;
 }
