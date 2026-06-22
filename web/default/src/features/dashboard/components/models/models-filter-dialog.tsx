@@ -59,6 +59,7 @@ import type {
 
 interface ModelsFilterProps {
   preferences: DashboardChartPreferences
+  currentFilters?: DashboardFilters
   onFilterChange: (filters: DashboardFilters) => void
   onReset: () => void
 }
@@ -97,7 +98,29 @@ export function ModelsFilter(props: ModelsFilterProps) {
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) resetFiltersFromPreferences()
+    if (nextOpen) {
+      if (props.currentFilters) {
+        setFilters(props.currentFilters)
+        const s = props.currentFilters.start_timestamp
+        const e = props.currentFilters.end_timestamp
+        if (s && e) {
+          const diffDays = Math.round(
+            (e.getTime() - s.getTime()) / (24 * 60 * 60 * 1000)
+          )
+          const now = new Date()
+          const isRecentEnd =
+            Math.abs(e.getTime() - now.getTime()) < 5 * 60 * 1000
+          const preset = isRecentEnd
+            ? TIME_RANGE_PRESETS.find((p) => p.days === diffDays)
+            : undefined
+          setSelectedRange(preset ? preset.days : null)
+        } else {
+          setSelectedRange(null)
+        }
+      } else {
+        resetFiltersFromPreferences()
+      }
+    }
     setOpen(nextOpen)
   }
 

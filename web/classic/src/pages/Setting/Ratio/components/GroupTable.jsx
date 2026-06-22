@@ -48,7 +48,6 @@ export function serializeGroupTable(rows) {
   const userUsableGroups = {};
 
   rows.forEach((row) => {
-    if (!row.name) return;
     groupRatio[row.name] = row.ratio;
     if (row.selectable) {
       userUsableGroups[row.name] = row.description;

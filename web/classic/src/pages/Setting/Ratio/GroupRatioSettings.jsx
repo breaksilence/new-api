@@ -101,6 +101,12 @@ export default function GroupRatioSettings(props) {
       }
     }
 
+    // 校验空分组名称（可视化和手动编辑都需要）
+    const ratioMap = parseJSONSafe(inputs.GroupRatio, {});
+    if (Object.keys(ratioMap).some((name) => name.trim() === '')) {
+      return showError(t('分组名称不能为空'));
+    }
+
     const updateArray = compareObjects(inputs, inputsRow);
     if (!updateArray.length) {
       return showWarning(t('你似乎并没有修改什么'));
