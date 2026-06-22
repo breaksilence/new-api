@@ -96,9 +96,12 @@ const Dashboard = () => {
   };
 
   const initChart = async () => {
+    const { start_timestamp, end_timestamp } = dashboardData.inputs
+    const startTs = Date.parse(start_timestamp) / 1000
+    const endTs = Date.parse(end_timestamp) / 1000
     await dashboardData.loadQuotaData().then((data) => {
       if (data && data.length > 0) {
-        dashboardCharts.updateChartData(data);
+        dashboardCharts.updateChartData(data, startTs, endTs);
       }
     });
     await loadUserData();
@@ -106,15 +109,24 @@ const Dashboard = () => {
   };
 
   const handleRefresh = async () => {
+    const { start_timestamp, end_timestamp } = dashboardData.inputs
+    const startTs = Date.parse(start_timestamp) / 1000
+    const endTs = Date.parse(end_timestamp) / 1000
     const data = await dashboardData.refresh();
     if (data && data.length > 0) {
-      dashboardCharts.updateChartData(data);
+      dashboardCharts.updateChartData(data, startTs, endTs);
     }
     await loadUserData();
   };
 
   const handleSearchConfirm = async () => {
-    await dashboardData.handleSearchConfirm(dashboardCharts.updateChartData);
+    const { start_timestamp, end_timestamp } = dashboardData.inputs
+    const startTs = Date.parse(start_timestamp) / 1000
+    const endTs = Date.parse(end_timestamp) / 1000
+    const forwardTimestamp = (data) => {
+      dashboardCharts.updateChartData(data, startTs, endTs)
+    }
+    await dashboardData.handleSearchConfirm(forwardTimestamp);
     await loadUserData();
   };
 

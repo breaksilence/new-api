@@ -29,6 +29,7 @@ import { ModelsChartPreferences } from './components/models/models-chart-prefere
 import { ModelsFilter } from './components/models/models-filter-dialog'
 import { OverviewDashboard } from './components/overview/overview-dashboard'
 import { DEFAULT_TIME_GRANULARITY } from './constants'
+import { dateToUnixTimestamp } from '@/lib/time'
 import {
   buildDefaultDashboardFilters,
   getSavedChartPreferences,
@@ -275,6 +276,16 @@ export function Dashboard() {
                     timeGranularity={
                       modelFilters.time_granularity || DEFAULT_TIME_GRANULARITY
                     }
+                    startTimestamp={
+                      modelFilters.start_timestamp
+                        ? dateToUnixTimestamp(modelFilters.start_timestamp)
+                        : undefined
+                    }
+                    endTimestamp={
+                      modelFilters.end_timestamp
+                        ? dateToUnixTimestamp(modelFilters.end_timestamp)
+                        : undefined
+                    }
                   />
                 </Suspense>
               </FadeIn>
@@ -286,6 +297,16 @@ export function Dashboard() {
                     defaultChartTab={chartPreferences.modelAnalyticsChart}
                     timeGranularity={
                       modelFilters.time_granularity || DEFAULT_TIME_GRANULARITY
+                    }
+                    startTimestamp={
+                      modelFilters.start_timestamp
+                        ? dateToUnixTimestamp(modelFilters.start_timestamp)
+                        : undefined
+                    }
+                    endTimestamp={
+                      modelFilters.end_timestamp
+                        ? dateToUnixTimestamp(modelFilters.end_timestamp)
+                        : undefined
                     }
                   />
                 </Suspense>

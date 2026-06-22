@@ -44,6 +44,8 @@ interface ConsumptionDistributionChartProps {
   loading?: boolean
   timeGranularity?: TimeGranularity
   defaultChartType?: ConsumptionDistributionChartType
+  startTimestamp?: number
+  endTimestamp?: number
 }
 
 const CHART_TYPE_ICONS: Record<
@@ -103,7 +105,9 @@ export function ConsumptionDistributionChart(
         timeGranularity,
         t,
         customization.preset,
-        chartRadius
+        chartRadius,
+        props.startTimestamp,
+        props.endTimestamp
       ),
     [
       props.data,
@@ -112,6 +116,8 @@ export function ConsumptionDistributionChart(
       t,
       customization.preset,
       chartRadius,
+      props.startTimestamp,
+      props.endTimestamp,
     ]
   )
   const spec = chartType === 'bar' ? chartData.spec_line : chartData.spec_area

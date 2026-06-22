@@ -19,7 +19,6 @@ For commercial licensing, please contact support@quantumnous.com
 import { dataScheme as vchartDefaultDataScheme } from '@visactor/vchart/esm/theme/color-scheme/builtin/default'
 import { getCurrencyDisplay } from '@/lib/currency'
 import { formatChartTime, type TimeGranularity } from '@/lib/time'
-import { MAX_CHART_TREND_POINTS } from '@/features/dashboard/constants'
 import type {
   QuotaDataItem,
   ProcessedChartData,
@@ -99,7 +98,9 @@ export function processChartData(
   timeGranularity: TimeGranularity = 'day',
   t?: TFunction,
   themeKey?: string,
-  chartCornerRadius?: number
+  chartCornerRadius?: number,
+  startTimestamp?: number,
+  endTimestamp?: number
 ): ProcessedChartData {
   const tt: TFunction = t ?? ((x) => x)
   const otherLabel = tt('Other')
@@ -303,28 +304,30 @@ export function processChartData(
     range: modelColorRange,
   }
 
-  // Pad time points if too few (default 7 points)
-  const MAX_TREND_POINTS = MAX_CHART_TREND_POINTS
-  const fillTimePoints = (times: string[]) => {
-    if (times.length >= MAX_TREND_POINTS) return times
-    const lastTime = Math.max(
-      ...data.map((item) => Number(item.created_at) || 0)
-    )
-    const intervalSec =
-      timeGranularity === 'week'
-        ? 604800
-        : timeGranularity === 'day'
-          ? 86400
-          : 3600
-    const padded = Array.from({ length: MAX_TREND_POINTS }, (_, i) =>
-      formatChartTime(
-        lastTime - (MAX_TREND_POINTS - 1 - i) * intervalSec,
-        timeGranularity
-      )
-    )
-    return padded
+  // Generate time points spanning the query interval
+  const getIntervalSec = () => {
+    if (timeGranularity === 'week') return 604800
+    if (timeGranularity === 'day') return 86400
+    return 3600
   }
-  const chartTimes = fillTimePoints(sortedTimes)
+  const intervalSec = getIntervalSec()
+  const canFillFromRange =
+    startTimestamp != null &&
+    endTimestamp != null &&
+    startTimestamp < endTimestamp
+  const chartTimes: string[] = canFillFromRange
+    ? (() => {
+        const pts: string[] = []
+        for (
+          let t = startTimestamp;
+          t <= endTimestamp;
+          t += intervalSec
+        ) {
+          pts.push(formatChartTime(t, timeGranularity))
+        }
+        return pts
+      })()
+    : sortedTimes
 
   const totalTimes = Array.from(modelTotalsMap.values()).reduce(
     (sum, x) => sum + (Number(x.count) || 0),

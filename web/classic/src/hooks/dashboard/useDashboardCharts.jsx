@@ -396,7 +396,7 @@ export const useDashboardCharts = (
   }, []);
 
   const updateChartData = useCallback(
-    (data) => {
+    (data, startTimestamp, endTimestamp) => {
       const processedData = processRawData(
         data,
         dataExportDefaultTime,
@@ -446,7 +446,8 @@ export const useDashboardCharts = (
 
       const chartTimePoints = generateChartTimePoints(
         aggregatedData,
-        data,
+        startTimestamp,
+        endTimestamp,
         dataExportDefaultTime,
       );
 

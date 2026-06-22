@@ -362,30 +362,32 @@ export const aggregateDataByTimeAndModel = (data, dataExportDefaultTime) => {
 
 export const generateChartTimePoints = (
   aggregatedData,
-  data,
+  startTimestamp,
+  endTimestamp,
   dataExportDefaultTime,
 ) => {
-  let chartTimePoints = Array.from(
-    new Set([...aggregatedData.values()].map((d) => d.time)),
-  );
+  // Generate time points spanning the query interval
+  const canFillFromRange =
+    startTimestamp != null &&
+    endTimestamp != null &&
+    startTimestamp < endTimestamp
 
-  if (chartTimePoints.length < DEFAULTS.MAX_TREND_POINTS) {
-    const lastTime = Math.max(...data.map((item) => item.created_at));
-    const interval = getTimeInterval(dataExportDefaultTime, true);
-
-    // 生成时间点数组，用于检查是否跨年
-    const generatedTimestamps = Array.from(
-      { length: DEFAULTS.MAX_TREND_POINTS },
-      (_, i) => lastTime - (6 - i) * interval,
-    );
-    const showYear = isDataCrossYear(generatedTimestamps);
-
-    chartTimePoints = generatedTimestamps.map((ts) =>
+  if (canFillFromRange) {
+    const interval = getTimeInterval(dataExportDefaultTime, true)
+    const timestamps = []
+    for (let t = startTimestamp; t <= endTimestamp; t += interval) {
+      timestamps.push(t)
+    }
+    const showYear = isDataCrossYear(timestamps)
+    return timestamps.map((ts) =>
       timestamp2string1(ts, dataExportDefaultTime, showYear),
-    );
+    )
   }
 
-  return chartTimePoints;
+  // Fallback: use time keys from aggregated data
+  return Array.from(
+    new Set([...aggregatedData.values()].map((d) => d.time)),
+  ).sort()
 };
 
 // ========== 用户维度数据处理 ==========
