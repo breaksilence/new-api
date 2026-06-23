@@ -374,8 +374,19 @@ export const generateChartTimePoints = (
 
   if (canFillFromRange) {
     const interval = getTimeInterval(dataExportDefaultTime, true)
+    // Align start to the beginning of its time bucket so that every week
+    // that may contain data is included in the chart axis.
+    let alignedStart = startTimestamp
+    if (dataExportDefaultTime === 'week') {
+      const d = new Date(alignedStart * 1000)
+      const dow = d.getDay()
+      const diffToMonday = dow === 0 ? 6 : dow - 1
+      d.setDate(d.getDate() - diffToMonday)
+      d.setHours(0, 0, 0, 0)
+      alignedStart = d.getTime() / 1000
+    }
     const timestamps = []
-    for (let t = startTimestamp; t <= endTimestamp; t += interval) {
+    for (let t = alignedStart; t <= endTimestamp; t += interval) {
       timestamps.push(t)
     }
     const showYear = isDataCrossYear(timestamps)
