@@ -18,7 +18,13 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { lazy, Suspense, useContext, useMemo } from 'react';
-import { Route, Routes, useLocation, useParams } from 'react-router-dom';
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useParams,
+} from 'react-router-dom';
 import Loading from './components/common/ui/Loading';
 import User from './pages/User';
 import { AuthRedirect, PrivateRoute, AdminRoute } from './helpers';
@@ -45,6 +51,7 @@ import ModelPage from './pages/Model';
 import ModelDeploymentPage from './pages/ModelDeployment';
 import Playground from './pages/Playground';
 import Subscription from './pages/Subscription';
+import Reconciliation from './pages/Reconciliation';
 import OAuth2Callback from './components/auth/OAuth2Callback';
 import PersonalSetting from './components/settings/PersonalSetting';
 import Setup from './pages/Setup';
@@ -170,6 +177,18 @@ function App() {
               <User />
             </AdminRoute>
           }
+        />
+        <Route
+          path='/console/reconciliation'
+          element={
+            <AdminRoute>
+              <Reconciliation />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='/reconciliation'
+          element={<Navigate to='/console/reconciliation' replace />}
         />
         <Route
           path='/user/reset'

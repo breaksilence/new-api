@@ -60,7 +60,18 @@ require (
 	gorm.io/gorm v1.25.2
 )
 
-require github.com/waffo-com/waffo-pancake-sdk-go v0.3.1
+require (
+	github.com/waffo-com/waffo-pancake-sdk-go v0.3.1
+	github.com/xuri/excelize/v2 v2.9.1
+)
+
+require (
+	github.com/richardlehane/mscfb v1.0.4 // indirect
+	github.com/richardlehane/msoleps v1.0.4 // indirect
+	github.com/tiendc/go-deepcopy v1.6.0 // indirect
+	github.com/xuri/efp v0.0.1 // indirect
+	github.com/xuri/nfp v0.0.1 // indirect
+)
 
 require (
 	github.com/DmitriyVTitov/size v1.5.0 // indirect

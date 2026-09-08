@@ -3834,6 +3834,25 @@
         "，": ", ",
         "，当前无生效订阅，将自动使用钱包": ", no active subscription. Wallet will be used automatically.",
         "，时间：": ",time:",
-        "，点击更新": ", click Update"
+        "，点击更新": ", click Update",
+        "对账单": "Reconciliation",
+        "消费费用汇总与导出": "Consumption cost summaries and exports",
+        "请选择完整的日期范围": "Select a complete date range",
+        "开始日期不能晚于结束日期": "Start date cannot be later than end date",
+        "日期范围不能超过 366 天": "The date range cannot exceed 366 days",
+        "获取对账单失败": "Failed to load reconciliation bills",
+        "导出对账单失败": "Failed to export reconciliation bills",
+        "导出成功": "Export successful",
+        "费用": "Fee",
+        "近 7 天": "Last 7 days",
+        "近 30 天": "Last 30 days",
+        "近 90 天": "Last 90 days",
+        "导出中...": "Exporting...",
+        "全部用户": "All users",
+        "按日": "Daily",
+        "按月": "Monthly",
+        "只读汇总现有消费日志，不影响原有统计。": "Read-only summary of existing consumption logs; existing statistics are unaffected.",
+        "暂无对账数据": "No reconciliation data",
+        "当前筛选条件下没有消费记录": "No consumption records match the current filters"
     }
 }

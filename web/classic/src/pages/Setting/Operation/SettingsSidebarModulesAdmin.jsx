@@ -66,6 +66,7 @@ export default function SettingsSidebarModulesAdmin(props) {
       redemption: true,
       user: true,
       subscription: true,
+      reconciliation: true,
       setting: true,
     },
   });
@@ -127,6 +128,7 @@ export default function SettingsSidebarModulesAdmin(props) {
         redemption: true,
         user: true,
         subscription: true,
+        reconciliation: true,
         setting: true,
       },
     };
@@ -174,7 +176,13 @@ export default function SettingsSidebarModulesAdmin(props) {
     if (props.options && props.options.SidebarModulesAdmin) {
       try {
         const modules = JSON.parse(props.options.SidebarModulesAdmin);
-        setSidebarModulesAdmin(modules);
+        setSidebarModulesAdmin({
+          ...modules,
+          admin: {
+            ...modules.admin,
+            reconciliation: modules.admin?.reconciliation !== false,
+          },
+        });
       } catch (error) {
         // 使用默认配置
         const defaultModules = {
@@ -196,6 +204,7 @@ export default function SettingsSidebarModulesAdmin(props) {
             redemption: true,
             user: true,
             subscription: true,
+            reconciliation: true,
             setting: true,
           },
         };
@@ -271,6 +280,11 @@ export default function SettingsSidebarModulesAdmin(props) {
           description: t('兑换码生成管理'),
         },
         { key: 'user', title: t('用户管理'), description: t('用户账户管理') },
+        {
+          key: 'reconciliation',
+          title: t('对账单'),
+          description: t('消费费用汇总与导出'),
+        },
         {
           key: 'setting',
           title: t('系统设置'),

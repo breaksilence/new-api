@@ -132,6 +132,11 @@ export function useSidebarData(): SidebarData {
             icon: Users,
           },
           {
+            title: t('Reconciliation'),
+            url: '/reconciliation',
+            icon: FileText,
+          },
+          {
             title: t('Redemption Codes'),
             url: '/redemption-codes',
             icon: Ticket,

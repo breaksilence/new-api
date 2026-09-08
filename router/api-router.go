@@ -317,6 +317,13 @@ func SetApiRouter(router *gin.Engine) {
 		dataRoute.GET("/users", middleware.AdminAuth(), controller.GetQuotaDatesByUser)
 		dataRoute.GET("/self", middleware.UserAuth(), controller.GetUserQuotaDates)
 
+		reconciliationRoute := apiRouter.Group("/reconciliation")
+		reconciliationRoute.Use(middleware.AdminAuth())
+		{
+			reconciliationRoute.GET("/bills", controller.GetReconciliationBills)
+			reconciliationRoute.GET("/export", controller.ExportReconciliationBills)
+		}
+
 		logRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())
 		{
 			logRoute.GET("/token", middleware.TokenAuthReadOnly(), controller.GetLogByKey)
