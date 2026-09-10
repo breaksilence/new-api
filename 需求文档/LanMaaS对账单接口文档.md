@@ -4,21 +4,21 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 文档版本 | V1.1 |
-| 编制日期 | 2026-09-08 |
+| 文档版本 | V1.2 |
+| 编制日期 | 2026-09-10 |
 | 适用范围 | `v1.0.0-rc.10-lx-1.1` 分支后续开发 |
 | 核心约束 | 数据库结构不变；不调整原有统计逻辑；只读分析现有 `logs` 数据；兼容 SQLite、MySQL、PostgreSQL |
 
 ## 1 文档定位
 
-本文件定义对账单功能的后端接口契约。方案只新增两个管理员接口，以现有消费日志为只读数据源，在请求发生时完成聚合。
+本文件定义对账单功能的后端接口契约。方案新增四个管理员接口，以现有消费日志为只读数据源，在请求发生时完成筛选选项查询与账单聚合。
 
 - 不依赖 `quota_data` 的异步汇总结果。
 - 不新增或修改数据库表、字段、索引。
 - 不生成或写入新的统计数据。
 - 不修改现有日志统计与数据看板接口、控制器和模型方法。
-- 用户筛选复用 `/api/user/search`。
-- 模型筛选复用 `/api/models/search`。
+- 用户筛选从消费日志中提取实际产生过消费的用户快照。
+- 模型筛选从消费日志中提取实际产生过消费的模型名称。
 - 本期已确认只汇总 `LogTypeConsume = 2` 的消费日志，不纳入退款抵扣。
 
 ## 2 接口总览
@@ -26,15 +26,15 @@
 | 方法 | 路径 | 用途 | 权限 |
 | --- | --- | --- | --- |
 | GET | `/api/reconciliation/bills` | 分页查询聚合后的对账明细 | 管理员 |
+| GET | `/api/reconciliation/options/users` | 搜索消费日志中已有的用户选项 | 管理员 |
+| GET | `/api/reconciliation/options/models` | 搜索消费日志中已有的模型选项 | 管理员 |
 | GET | `/api/reconciliation/export` | 导出当前筛选条件下的全部聚合结果 | 管理员 |
-
-用户和模型筛选继续调用现有管理员接口，不属于本次新增接口。
 
 ## 3 通用约定
 
 | 项目 | 约定 |
 | --- | --- |
-| 认证授权 | 新增接口沿用现有会话认证并使用 `middleware.AdminAuth`。复用接口维持原有权限行为。 |
+| 认证授权 | 新增接口沿用现有会话认证并使用 `middleware.AdminAuth`。 |
 | 响应封装 | JSON 接口沿用 `success`、`message`、`data` 结构。 |
 | 日期格式 | `start_date` 与 `end_date` 使用 `YYYY-MM-DD`，起止日期均包含在统计范围内。 |
 | 时间边界 | 将结束日期转换为次日零点，查询条件使用 `created_at >= start` 且 `created_at < endExclusive`。 |
@@ -120,38 +120,73 @@ GET /api/reconciliation/bills?start_date=2026-08-10&end_date=2026-09-08&user_id=
 7. `total` 使用相同条件的分组子查询计算，保证 `total` 与 `items` 口径一致。
 8. 列表查询只执行读取和聚合，不更新 `logs`、`quota_data` 或 `users`。
 
-## 5 现有筛选接口复用
+## 5 日志筛选选项接口
 
 ### 5.1 用户筛选
 
 ```http
-GET /api/user/search?keyword=ali&p=1&page_size=20
+GET /api/reconciliation/options/users?keyword=ali&p=1&page_size=20
 ```
 
-对账页面只从现有响应中提取 `id` 和 `username` 生成筛选选项。不得修改接口、增加返回字段或改变原有调用行为。
+接口固定只读查询 `LogTypeConsume = 2` 的消费日志，按 `user_id` 去重，并返回日志中的非空账号快照。用户已从当前用户表删除或改名时，历史消费用户仍可作为筛选项。
 
 | 参数 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `keyword` | string | 否 | 账号关键词。 |
-| `p` | integer | 否 | 现有分页参数，默认 1。 |
-| `page_size` | integer | 否 | 现有分页参数，对账下拉建议使用 20。 |
+| `user_id` | integer | 否 | 精确查询用户编号，用于恢复已选项显示。 |
+| `p` | integer | 否 | 页码，默认 1。 |
+| `page_size` | integer | 否 | 每页条数，默认 20，最大 100。 |
+
+成功响应：
+
+```json
+{
+  "success": true,
+  "data": {
+    "page": 1,
+    "page_size": 20,
+    "total": 1,
+    "items": [
+      {
+        "user_id": 12,
+        "username": "alice"
+      }
+    ]
+  }
+}
+```
 
 ### 5.2 模型筛选
 
 ```http
-GET /api/models/search?keyword=gpt&p=1&page_size=20
+GET /api/reconciliation/options/models?keyword=deepseek&p=1&page_size=20
 ```
 
-对账页面只从现有响应中提取 `model_name` 生成筛选选项。不得修改接口行为。
+接口固定只读查询 `LogTypeConsume = 2` 的消费日志，按实际 `model_name` 去重。`keyword` 对完整模型名执行包含搜索，返回值始终是日志中的实际模型名，不受模型元数据的精确、前缀、包含或后缀规则影响。
 
 | 参数 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `keyword` | string | 否 | 模型名称关键词。 |
-| `vendor` | string | 否 | 现有供应商筛选；对账页面默认不传。 |
-| `p` | integer | 否 | 现有分页参数，默认 1。 |
-| `page_size` | integer | 否 | 现有分页参数，对账下拉建议使用 20。 |
+| `p` | integer | 否 | 页码，默认 1。 |
+| `page_size` | integer | 否 | 每页条数，默认 20，最大 100。 |
 
-历史消费模型由账单查询中的 `logs.model_name` 原样返回。已经从模型配置中删除的历史模型可能不会出现在筛选下拉中，但不影响账单查询和导出结果。
+成功响应：
+
+```json
+{
+  "success": true,
+  "data": {
+    "page": 1,
+    "page_size": 20,
+    "total": 1,
+    "items": [
+      {
+        "model_name": "deepseek-v4-flash"
+      }
+    ]
+  }
+}
+```
 
 ## 6 对账导出
 
@@ -193,7 +228,7 @@ GET /api/reconciliation/export?start_date=2026-08-10&end_date=2026-09-08&user_id
 | 日期格式错误 | `message = 日期格式应为 YYYY-MM-DD`。 | 不提交新筛选。 |
 | 开始日期晚于结束日期 | `message = 开始时间需早于结束时间`。 | 不刷新列表。 |
 | 粒度非法 | `message = 时间粒度仅支持 day 或 month`。 | 恢复最近一次有效值。 |
-| 用户或模型无匹配 | 现有搜索接口成功返回空 `items`。 | 下拉显示无匹配文案。 |
+| 用户或模型无匹配 | 日志选项接口成功返回空 `items`。 | 下拉显示无匹配文案。 |
 | 查询无结果 | 列表成功返回 `total = 0` 和空 `items`。 | 显示“暂无数据”。 |
 | 导出无结果 | 返回 JSON 失败响应且不设置附件头。 | 显示固定提示。 |
 | 非管理员访问 | 由 `AdminAuth` 返回 401 或 403。 | 跳转 403 页面。 |
@@ -201,8 +236,7 @@ GET /api/reconciliation/export?start_date=2026-08-10&end_date=2026-09-08&user_id
 
 ## 8 安全与兼容要求
 
-- 两个新增接口必须使用 `middleware.AdminAuth`。
-- 用户和模型搜索接口继续使用原有管理员权限控制。
+- 四个新增接口必须使用 `middleware.AdminAuth`。
 - 所有查询使用参数绑定。禁止拼接用户输入到 SQL。
 - JSON 编解码遵循项目约定，业务代码使用 `common/json.go` 的包装函数。
 - 新增查询必须兼容 SQLite、MySQL 5.7.8 及以上、PostgreSQL 9.6 及以上。
@@ -213,6 +247,8 @@ GET /api/reconciliation/export?start_date=2026-08-10&end_date=2026-09-08&user_id
 ## 9 验收清单
 
 - [ ] 日期、用户、模型和粒度条件叠加后，列表与导出结果一致。
+- [ ] 用户和模型下拉只包含已有消费日志中的去重值，模糊搜索返回实际可筛选值。
+- [ ] 用户已删除、账号已改名、模型已下线或使用规则匹配时，历史日志选项仍可选择。
 - [ ] 日月粒度的 `period` 格式、分组数量和费用总和正确。
 - [ ] 结束日期全天的数据均被统计，不存在跨日重复或遗漏。
 - [ ] `total` 按聚合行计算，分页默认 20，筛选变化后回到第 1 页。

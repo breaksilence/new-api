@@ -188,7 +188,7 @@ const Reconciliation = () => {
       async () => {
         setUsersLoading(true);
         try {
-          const response = await API.get('/api/user/search', {
+          const response = await API.get('/api/reconciliation/options/users', {
             params: {
               keyword: keyword.trim(),
               p: 1,
@@ -198,8 +198,10 @@ const Reconciliation = () => {
           if (response.data.success) {
             setUserOptions(
               (response.data.data?.items || []).map((user) => ({
-                value: user.id,
-                label: `${user.username} (#${user.id})`,
+                value: user.user_id,
+                label: user.username
+                  ? `${user.username} (#${user.user_id})`
+                  : `#${user.user_id}`,
               })),
             );
           }
@@ -219,7 +221,7 @@ const Reconciliation = () => {
       async () => {
         setModelsLoading(true);
         try {
-          const response = await API.get('/api/models/search', {
+          const response = await API.get('/api/reconciliation/options/models', {
             params: {
               keyword: keyword.trim(),
               p: 1,

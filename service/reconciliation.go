@@ -107,6 +107,71 @@ func GetReconciliationBillsPage(
 	}, nil
 }
 
+func GetReconciliationUserOptionsPage(
+	ctx context.Context,
+	keyword string,
+	userID int,
+	page int,
+	pageSize int,
+) (dto.ReconciliationUserOptionsPage, error) {
+	if page < 1 {
+		return dto.ReconciliationUserOptionsPage{}, ErrReconciliationInvalidPage
+	}
+	if pageSize < 1 || pageSize > ReconciliationMaxPageSize {
+		return dto.ReconciliationUserOptionsPage{}, ErrReconciliationInvalidPageSize
+	}
+	if userID < 0 {
+		return dto.ReconciliationUserOptionsPage{}, ErrReconciliationInvalidUserID
+	}
+
+	items, total, err := model.GetReconciliationUserOptions(
+		ctx,
+		strings.TrimSpace(keyword),
+		userID,
+		(page-1)*pageSize,
+		pageSize,
+	)
+	if err != nil {
+		return dto.ReconciliationUserOptionsPage{}, err
+	}
+	return dto.ReconciliationUserOptionsPage{
+		Page:     page,
+		PageSize: pageSize,
+		Total:    total,
+		Items:    items,
+	}, nil
+}
+
+func GetReconciliationModelOptionsPage(
+	ctx context.Context,
+	keyword string,
+	page int,
+	pageSize int,
+) (dto.ReconciliationModelOptionsPage, error) {
+	if page < 1 {
+		return dto.ReconciliationModelOptionsPage{}, ErrReconciliationInvalidPage
+	}
+	if pageSize < 1 || pageSize > ReconciliationMaxPageSize {
+		return dto.ReconciliationModelOptionsPage{}, ErrReconciliationInvalidPageSize
+	}
+
+	items, total, err := model.GetReconciliationModelOptions(
+		ctx,
+		strings.TrimSpace(keyword),
+		(page-1)*pageSize,
+		pageSize,
+	)
+	if err != nil {
+		return dto.ReconciliationModelOptionsPage{}, err
+	}
+	return dto.ReconciliationModelOptionsPage{
+		Page:     page,
+		PageSize: pageSize,
+		Total:    total,
+		Items:    items,
+	}, nil
+}
+
 func GetReconciliationExportRows(
 	ctx context.Context,
 	filter dto.ReconciliationFilter,

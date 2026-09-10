@@ -4,8 +4,8 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 文档版本 | V1.1 |
-| 编制日期 | 2026-09-08 |
+| 文档版本 | V1.2 |
+| 编制日期 | 2026-09-10 |
 | 需求来源 | `需求文档/Lanmaas对账单.doc` |
 | 实施原则 | 数据库结构不变；原有统计逻辑不变；只读分析现有消费日志；新增代码与原模块隔离 |
 
@@ -16,10 +16,12 @@
 本次只新增：
 
 1. `GET /api/reconciliation/bills`
-2. `GET /api/reconciliation/export`
-3. 独立的管理员对账页面与菜单入口
+2. `GET /api/reconciliation/options/users`
+3. `GET /api/reconciliation/options/models`
+4. `GET /api/reconciliation/export`
+5. 独立的管理员对账页面与菜单入口
 
-用户筛选复用 `/api/user/search`，模型筛选复用 `/api/models/search`。
+用户和模型筛选均从现有消费日志中读取去重候选项，不依赖当前用户表、模型元数据或模型名称匹配规则。
 
 本次明确不做：
 
@@ -38,7 +40,7 @@
 | 数据库结构不变 | 不执行迁移，不修改 `AutoMigrate`，不新增索引。 |
 | 原有统计逻辑不变 | 新增功能通过独立文件实现，不修改现有统计控制器和模型方法。 |
 | 只使用现有数据 | 只读查询 `LOG_DB` 中现有的 `logs` 消费日志。 |
-| 接口可以增加 | 只新增 `bills` 与 `export` 两个 GET 接口。 |
+| 接口可以增加 | 新增账单、日志用户选项、日志模型选项与导出四个 GET 接口。 |
 | UI 风格保持原样 | 分别复用 `web/default` 与 `web/classic` 当前布局、组件、主题和响应式规则，不切换站点主题。 |
 | 三库兼容 | 日期分组表达式集中封装，并分别适配 SQLite、MySQL、PostgreSQL。 |
 
@@ -49,7 +51,7 @@
 | 消费日志 | `Log` 已包含 `user_id`、`username`、`created_at`、`model_name`、`quota`，消费类型为 2。 | 现有日志接口返回逐条记录，不能按用户、模型和日月聚合。 |
 | 数据看板汇总 | `quota_data` 已按小时缓存部分消费数据。 | 受开关和异步刷新影响，不适合作为对账数据源，本次不调整其实现。 |
 | 管理权限 | 已有 `middleware.AdminAuth` 和前端管理员路由守卫。 | 尚无独立对账菜单、页面、聚合接口和导出接口。 |
-| 筛选数据 | 已有用户与模型管理员搜索接口。 | 对账页面需要映射为可搜索筛选项。 |
+| 筛选数据 | 消费日志已保存 `user_id`、`username` 与实际 `model_name`。 | 需要增加只读去重查询，避免当前用户或模型配置与历史账务数据不一致。 |
 | 列表能力 | 已有 `SectionPageLayout`、`DataTablePage`、分页、空状态和加载状态。 | 需要对账专用筛选栏、只读列和导出动作。 |
 | 费用显示 | 已有 `QuotaPerUnit` 和账单货币格式化函数。 | 页面与导出需要使用同一配置快照。 |
 
@@ -57,8 +59,8 @@
 
 ```text
 管理员对账页面
-  ├─ 复用 /api/user/search 获取用户筛选项
-  ├─ 复用 /api/models/search 获取模型筛选项
+  ├─ 调用 /api/reconciliation/options/users 获取日志用户筛选项
+  ├─ 调用 /api/reconciliation/options/models 获取日志模型筛选项
   ├─ 调用 /api/reconciliation/bills 查询账单
   └─ 调用 /api/reconciliation/export 导出账单
 
@@ -83,11 +85,11 @@
 
 | 位置 | 调整内容 |
 | --- | --- |
-| `router/api-router.go` | 仅注册 `/api/reconciliation/bills` 与 `/api/reconciliation/export` 两个管理员 GET 路由。 |
-| `controller/reconciliation.go` | 解析对账筛选参数，调用新增服务并返回列表或文件流。 |
-| `dto/reconciliation.go` | 定义筛选、聚合行和响应 DTO，不直接暴露 `model.Log`。 |
-| `service/reconciliation.go` | 负责日期边界、统计口径、费用换算以及列表与导出的复用逻辑。 |
-| `model/reconciliation.go` | 只实现 `logs` 聚合、分组计数和三库日期表达式。 |
+| `router/api-router.go` | 注册四个对账管理员 GET 路由。 |
+| `controller/reconciliation.go` | 解析账单与选项参数，调用新增服务并返回列表或文件流。 |
+| `dto/reconciliation.go` | 定义筛选、选项、聚合行和响应 DTO，不直接暴露 `model.Log`。 |
+| `service/reconciliation.go` | 负责日期边界、筛选选项、统计口径、费用换算以及列表与导出的复用逻辑。 |
+| `model/reconciliation.go` | 只实现 `logs` 的选项查询、聚合、分组计数和三库日期表达式。 |
 | `service/reconciliation_export.go` | 复用聚合过滤条件，流式生成 XLSX。 |
 | 对应测试文件 | 验证新接口、只读查询、三库结果，并回归原有统计接口行为。 |
 
@@ -117,7 +119,9 @@
 
 身份分组始终使用 `user_id`。`username` 使用消费日志中的账号快照，避免用户删除后失去可核对信息，也避免 `LOG_DB` 与主数据库分离时跨库连接。
 
-用户筛选下拉通过现有 `/api/user/search` 获取当前账号。历史账号快照与当前账号名称不同属于正常情况。
+用户筛选下拉按消费日志中的 `user_id` 去重，展示日志中的非空账号快照。即使当前账号已删除或改名，仍以日志身份与快照完成历史对账。
+
+模型筛选下拉按消费日志中的实际 `model_name` 去重，不读取模型元数据的名称规则。输入只用于模糊搜索候选项，点选后使用实际完整模型名精确筛选账单。
 
 ### 5.4 退款口径
 
@@ -170,7 +174,7 @@
 | `routes/_authenticated/reconciliation/index.tsx` | 新增管理员路由，管理筛选和分页参数。 |
 | `features/reconciliation/index.tsx` | 使用 `SectionPageLayout` 组合页面标题、导出动作和内容区。 |
 | `features/reconciliation/components` | 新增筛选栏、列定义、表格、移动端卡片和导出按钮。 |
-| `features/reconciliation/api.ts` | 只封装新增列表与导出请求；用户和模型搜索调用现有 feature API。 |
+| `features/reconciliation/api.ts` | 封装账单、日志用户选项、日志模型选项与导出请求。 |
 | `features/reconciliation/types.ts` | 定义筛选、响应和行数据类型。 |
 | `hooks/use-sidebar-data.ts` | 在管理员分组增加“对账单”入口。 |
 | `i18n/locales` | 为 zh、en、fr、ru、ja、vi 补齐新增文案。 |
@@ -215,6 +219,8 @@
 - 日期缺失、格式非法、开始晚于结束、结束日全天、跨月和跨年。
 - 同一用户多模型、多用户同模型、日月切换、空用户名和空模型名。
 - 日期、用户、模型任意组合后的 `total`、分页边界和稳定排序。
+- 消费日志用户与模型去重、模糊搜索、分页及非消费日志排除。
+- 已删除用户、已下线模型和规则匹配模型仍返回日志中的实际候选值。
 - 未登录、普通用户、管理员和根用户权限。
 - 文件头、文件名、列顺序、数值格式、全量行数和空数据导出。
 - SQLite、MySQL、PostgreSQL 使用同一固定日志数据集执行断言。
@@ -226,6 +232,7 @@
 - 默认筛选条件和每页条数正确。
 - 自定义日期不完整或顺序错误时不发送请求。
 - 用户和模型在点选候选项后才更新正式筛选。
+- 用户与模型候选项来自消费日志，模糊搜索后提交实际完整值。
 - 所有筛选变化后页码重置为 1。
 - 加载、后台刷新、空状态、错误状态和移动端卡片可用。
 - 深色主题与现有页面风格一致。
@@ -235,6 +242,7 @@
 
 - [ ] 只有管理员可见并访问对账页面和新增接口。
 - [ ] 时间、用户、模型和粒度筛选可以叠加。
+- [ ] 用户和模型下拉与消费日志已有数据一致，不受当前配置删除或名称规则影响。
 - [ ] 列表按用户、模型和周期聚合，默认每页 20 条。
 - [ ] 页面与导出的费用总和一致。
 - [ ] 导出包含全部筛选结果，不受分页影响。
@@ -259,7 +267,7 @@
 
 发布顺序：
 
-1. 上线两个新增后端接口。
+1. 上线四个新增后端接口。
 2. 验证接口权限、统计结果和性能。
 3. 增加前端菜单和页面。
 

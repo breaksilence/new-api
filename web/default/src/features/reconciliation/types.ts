@@ -50,3 +50,33 @@ export interface ReconciliationBillsResponse {
     items: ReconciliationBill[]
   }
 }
+
+export interface ReconciliationOptionSearchParams {
+  keyword?: string
+  page?: number
+  pageSize?: number
+}
+
+export interface ReconciliationUserOptionSearchParams extends ReconciliationOptionSearchParams {
+  userId?: number
+}
+
+export interface ReconciliationUserOption {
+  user_id: number
+  username: string
+}
+
+export interface ReconciliationModelOption {
+  model_name: string
+}
+
+export interface ReconciliationOptionsResponse<T> {
+  success: boolean
+  message?: string
+  data?: {
+    page: number
+    page_size: number
+    total: number
+    items: T[]
+  }
+}

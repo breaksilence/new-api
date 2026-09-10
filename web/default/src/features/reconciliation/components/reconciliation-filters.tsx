@@ -49,8 +49,10 @@ import {
 } from '@/components/ui/select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { DatePicker } from '@/components/date-picker'
-import { searchModels } from '@/features/models/api'
-import { getUser, searchUsers } from '@/features/users/api'
+import {
+  getReconciliationModelOptions,
+  getReconciliationUserOptions,
+} from '../api'
 import type {
   ReconciliationFilters as FilterValues,
   ReconciliationGranularity,
@@ -165,31 +167,38 @@ export function ReconciliationFilters({
   const usersQuery = useQuery({
     queryKey: ['reconciliation-user-options', debouncedUserSearch],
     queryFn: () =>
-      searchUsers({
+      getReconciliationUserOptions({
         keyword: debouncedUserSearch.trim(),
-        p: 1,
-        page_size: 20,
+        page: 1,
+        pageSize: 20,
       }),
   })
   const selectedUserQuery = useQuery({
     queryKey: ['reconciliation-selected-user', value.userId],
-    queryFn: () => getUser(value.userId!),
+    queryFn: () =>
+      getReconciliationUserOptions({
+        userId: value.userId,
+        page: 1,
+        pageSize: 1,
+      }),
     enabled: Boolean(value.userId),
   })
   const modelsQuery = useQuery({
     queryKey: ['reconciliation-model-options', debouncedModelSearch],
     queryFn: () =>
-      searchModels({
+      getReconciliationModelOptions({
         keyword: debouncedModelSearch.trim(),
-        p: 1,
-        page_size: 20,
+        page: 1,
+        pageSize: 20,
       }),
   })
 
   const userOptions = useMemo<SearchOption[]>(() => {
     return (usersQuery.data?.data?.items ?? []).map((user) => ({
-      value: String(user.id),
-      label: `${user.username} (#${user.id})`,
+      value: String(user.user_id),
+      label: user.username
+        ? `${user.username} (#${user.user_id})`
+        : `#${user.user_id}`,
     }))
   }, [usersQuery.data?.data?.items])
   const modelOptions = useMemo<SearchOption[]>(() => {
@@ -201,9 +210,11 @@ export function ReconciliationFilters({
       label: modelName,
     }))
   }, [modelsQuery.data?.data?.items])
-  const selectedUser = selectedUserQuery.data?.data
+  const selectedUser = selectedUserQuery.data?.data?.items[0]
   const selectedUserLabel = selectedUser
-    ? `${selectedUser.username} (#${selectedUser.id})`
+    ? selectedUser.username
+      ? `${selectedUser.username} (#${selectedUser.user_id})`
+      : `#${selectedUser.user_id}`
     : value.userId
       ? `#${value.userId}`
       : undefined

@@ -21,6 +21,11 @@ import type {
   ReconciliationBillsParams,
   ReconciliationBillsResponse,
   ReconciliationFilters,
+  ReconciliationModelOption,
+  ReconciliationOptionSearchParams,
+  ReconciliationOptionsResponse,
+  ReconciliationUserOption,
+  ReconciliationUserOptionSearchParams,
 } from './types'
 
 function toApiParams(filters: ReconciliationFilters) {
@@ -41,6 +46,33 @@ export async function getReconciliationBills(
       ...toApiParams(params),
       p: params.page,
       page_size: params.pageSize,
+    },
+  })
+  return response.data
+}
+
+export async function getReconciliationUserOptions(
+  params: ReconciliationUserOptionSearchParams = {}
+): Promise<ReconciliationOptionsResponse<ReconciliationUserOption>> {
+  const response = await api.get('/api/reconciliation/options/users', {
+    params: {
+      keyword: params.keyword,
+      user_id: params.userId,
+      p: params.page ?? 1,
+      page_size: params.pageSize ?? 20,
+    },
+  })
+  return response.data
+}
+
+export async function getReconciliationModelOptions(
+  params: ReconciliationOptionSearchParams = {}
+): Promise<ReconciliationOptionsResponse<ReconciliationModelOption>> {
+  const response = await api.get('/api/reconciliation/options/models', {
+    params: {
+      keyword: params.keyword,
+      p: params.page ?? 1,
+      page_size: params.pageSize ?? 20,
     },
   })
   return response.data

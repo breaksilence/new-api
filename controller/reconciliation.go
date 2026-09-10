@@ -70,6 +70,57 @@ func GetReconciliationBills(c *gin.Context) {
 	common.ApiSuccess(c, result)
 }
 
+func GetReconciliationUserOptions(c *gin.Context) {
+	page, err := parseReconciliationIntQuery(c, "p", 1)
+	if err != nil || page < 1 {
+		common.ApiError(c, service.ErrReconciliationInvalidPage)
+		return
+	}
+	pageSize, err := parseReconciliationIntQuery(c, "page_size", service.ReconciliationDefaultPageSize)
+	if err != nil || pageSize < 1 || pageSize > service.ReconciliationMaxPageSize {
+		common.ApiError(c, service.ErrReconciliationInvalidPageSize)
+		return
+	}
+	userID, err := parseReconciliationIntQuery(c, "user_id", 0)
+	if err != nil || userID < 0 {
+		common.ApiError(c, service.ErrReconciliationInvalidUserID)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), reconciliationListTimeout)
+	defer cancel()
+	result, err := service.GetReconciliationUserOptionsPage(ctx, c.Query("keyword"), userID, page, pageSize)
+	if err != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("reconciliation user options query failed: %v", err))
+		common.ApiErrorMsg(c, "对账单用户选项查询失败，请稍后重试")
+		return
+	}
+	common.ApiSuccess(c, result)
+}
+
+func GetReconciliationModelOptions(c *gin.Context) {
+	page, err := parseReconciliationIntQuery(c, "p", 1)
+	if err != nil || page < 1 {
+		common.ApiError(c, service.ErrReconciliationInvalidPage)
+		return
+	}
+	pageSize, err := parseReconciliationIntQuery(c, "page_size", service.ReconciliationDefaultPageSize)
+	if err != nil || pageSize < 1 || pageSize > service.ReconciliationMaxPageSize {
+		common.ApiError(c, service.ErrReconciliationInvalidPageSize)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), reconciliationListTimeout)
+	defer cancel()
+	result, err := service.GetReconciliationModelOptionsPage(ctx, c.Query("keyword"), page, pageSize)
+	if err != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("reconciliation model options query failed: %v", err))
+		common.ApiErrorMsg(c, "对账单模型选项查询失败，请稍后重试")
+		return
+	}
+	common.ApiSuccess(c, result)
+}
+
 func ExportReconciliationBills(c *gin.Context) {
 	filter, err := buildReconciliationFilterFromRequest(c)
 	if err != nil {

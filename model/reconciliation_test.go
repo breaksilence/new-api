@@ -86,3 +86,47 @@ func TestReconciliationPeriodExpression(t *testing.T) {
 	common.UsingMySQL = true
 	require.Equal(t, "DATE_FORMAT(FROM_UNIXTIME(created_at), '%Y-%m-%d')", reconciliationPeriodExpression("day"))
 }
+
+func TestReconciliationOptionsUseConsumeLogs(t *testing.T) {
+	originalLogDB := LOG_DB
+	t.Cleanup(func() {
+		LOG_DB = originalLogDB
+	})
+
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&Log{}))
+	LOG_DB = db
+
+	logs := []Log{
+		{UserId: 1, Username: "alice", Type: LogTypeConsume, ModelName: "deepseek-v4-flash"},
+		{UserId: 1, Username: "", Type: LogTypeConsume, ModelName: "deepseek-reasoner"},
+		{UserId: 2, Username: "bob", Type: LogTypeConsume, ModelName: "deepseek-v4-flash"},
+		{UserId: 3, Username: "refund-user", Type: LogTypeRefund, ModelName: "refund-model"},
+		{UserId: 4, Username: "empty-model-user", Type: LogTypeConsume, ModelName: ""},
+	}
+	require.NoError(t, db.Create(&logs).Error)
+
+	users, total, err := GetReconciliationUserOptions(context.Background(), "ali", 0, 0, 20)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, total)
+	require.Equal(t, []dto.ReconciliationUserOption{{UserID: 1, Username: "alice"}}, users)
+
+	users, total, err = GetReconciliationUserOptions(context.Background(), "", 2, 0, 20)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, total)
+	require.Equal(t, []dto.ReconciliationUserOption{{UserID: 2, Username: "bob"}}, users)
+
+	models, total, err := GetReconciliationModelOptions(context.Background(), "v4", 0, 20)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, total)
+	require.Equal(t, []dto.ReconciliationModelOption{{ModelName: "deepseek-v4-flash"}}, models)
+
+	models, total, err = GetReconciliationModelOptions(context.Background(), "", 0, 20)
+	require.NoError(t, err)
+	require.EqualValues(t, 2, total)
+	require.Equal(t, []dto.ReconciliationModelOption{
+		{ModelName: "deepseek-reasoner"},
+		{ModelName: "deepseek-v4-flash"},
+	}, models)
+}
