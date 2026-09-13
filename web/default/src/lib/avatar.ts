@@ -28,14 +28,18 @@ function hashString(value: string): number {
   return hash
 }
 
-export function getUserAvatarStyle(name: string): UserAvatarStyle {
+export function getUserAvatarColor(name: string): string {
   const hash = hashString(name)
   const hue = hash % 360
   const saturation = 54 + (hash % 8)
   const lightness = 52 + ((hash >> 4) % 8)
 
+  return `hsla(${hue}, ${saturation}%, ${lightness}%, 0.82)`
+}
+
+export function getUserAvatarStyle(name: string): UserAvatarStyle {
   return {
-    backgroundColor: `hsl(${hue} ${saturation}% ${lightness}% / 0.82)`,
+    backgroundColor: getUserAvatarColor(name),
     color: 'white',
   }
 }

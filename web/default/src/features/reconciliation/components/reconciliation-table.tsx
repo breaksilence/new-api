@@ -125,6 +125,7 @@ export function ReconciliationTable({
               abbreviate: false,
               digitsLarge: 2,
               digitsSmall: 2,
+              minimumFractionDigits: 2,
             })}
           </div>
         ),
@@ -169,10 +170,11 @@ export function ReconciliationTable({
       columns={columns}
       isLoading={isLoading}
       isFetching={isFetching}
-      emptyTitle={t('No reconciliation records')}
+      emptyTitle={t('No data')}
       emptyDescription={t('No consumption records match the current filters.')}
       skeletonKeyPrefix='reconciliation-skeleton'
       toolbar={null}
+      showPagination={(data?.total ?? 0) > 0}
       tableHeaderClassName='bg-muted/30 sticky top-0 z-10'
       mobileProps={{
         getRowKey: (row) =>

@@ -114,7 +114,7 @@ export function Reconciliation() {
       const downloadUrl = URL.createObjectURL(blob)
       const anchor = document.createElement('a')
       anchor.href = downloadUrl
-      anchor.download = `${t('Reconciliation')}_${dayjs().format('YYYY-MM-DD')}.xlsx`
+      anchor.download = `对账单_${dayjs().format('YYYY-MM-DD')}.xlsx`
       document.body.appendChild(anchor)
       anchor.click()
       anchor.remove()

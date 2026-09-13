@@ -4240,6 +4240,8 @@
         "按日": "Theo ngày",
         "按月": "Theo tháng",
         "只读汇总现有消费日志，不影响原有统计。": "Tổng hợp chỉ đọc từ nhật ký sử dụng hiện có, không ảnh hưởng đến thống kê hiện tại.",
+        "无匹配用户": "Không có người dùng phù hợp",
+        "无匹配模型": "Không có mô hình phù hợp",
         "暂无对账数据": "Không có dữ liệu đối soát",
         "当前筛选条件下没有消费记录": "Không có bản ghi sử dụng phù hợp với bộ lọc hiện tại"
     }

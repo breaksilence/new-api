@@ -3852,6 +3852,8 @@
         "按日": "Daily",
         "按月": "Monthly",
         "只读汇总现有消费日志，不影响原有统计。": "Read-only summary of existing consumption logs; existing statistics are unaffected.",
+        "无匹配用户": "No matching users",
+        "无匹配模型": "No matching models",
         "暂无对账数据": "No reconciliation data",
         "当前筛选条件下没有消费记录": "No consumption records match the current filters"
     }

@@ -46,10 +46,11 @@ import CardTable from '../../components/common/ui/CardTable';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
 import {
   API,
-  convertUSDToCurrency,
   createCardProPagination,
+  getCurrencyConfig,
   showError,
   showSuccess,
+  stringToColor,
 } from '../../helpers';
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -88,6 +89,26 @@ const getInitials = (name) => {
   return normalized ? normalized.slice(0, 2).toUpperCase() : '?';
 };
 
+const mergeOptions = (previous, next) => {
+  const byValue = new Map(previous.map((option) => [option.value, option]));
+  next.forEach((option) => byValue.set(option.value, option));
+  return Array.from(byValue.values());
+};
+
+const isNearListEnd = (event) => {
+  const list = event.currentTarget;
+  return list.scrollHeight - list.scrollTop - list.clientHeight <= 32;
+};
+
+const formatReconciliationAmount = (amount) => {
+  const { symbol, rate } = getCurrencyConfig();
+  const value = Number(amount || 0) * rate;
+  return `${symbol}${new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)}`;
+};
+
 const getDownloadMessage = async (error, fallback) => {
   const payload = error?.response?.data;
   if (payload instanceof Blob) {
@@ -113,9 +134,21 @@ const Reconciliation = () => {
   const [exporting, setExporting] = useState(false);
   const [userOptions, setUserOptions] = useState([]);
   const [modelOptions, setModelOptions] = useState([]);
+  const [userOptionMeta, setUserOptionMeta] = useState({
+    keyword: '',
+    page: 0,
+    total: 0,
+  });
+  const [modelOptionMeta, setModelOptionMeta] = useState({
+    keyword: '',
+    page: 0,
+    total: 0,
+  });
   const [usersLoading, setUsersLoading] = useState(false);
   const [modelsLoading, setModelsLoading] = useState(false);
   const requestSequence = useRef(0);
+  const userRequestSequence = useRef(0);
+  const modelRequestSequence = useRef(0);
   const userSearchTimer = useRef(null);
   const modelSearchTimer = useRef(null);
 
@@ -182,74 +215,122 @@ const Reconciliation = () => {
     [],
   );
 
-  const searchUsers = useCallback((keyword = '') => {
-    if (userSearchTimer.current) clearTimeout(userSearchTimer.current);
-    userSearchTimer.current = setTimeout(
-      async () => {
-        setUsersLoading(true);
-        try {
-          const response = await API.get('/api/reconciliation/options/users', {
-            params: {
-              keyword: keyword.trim(),
-              p: 1,
-              page_size: SEARCH_PAGE_SIZE,
-            },
-          });
-          if (response.data.success) {
-            setUserOptions(
-              (response.data.data?.items || []).map((user) => ({
-                value: user.user_id,
-                label: user.username
-                  ? `${user.username} (#${user.user_id})`
-                  : `#${user.user_id}`,
-              })),
-            );
-          }
-        } catch (_) {
-          setUserOptions([]);
-        } finally {
-          setUsersLoading(false);
-        }
-      },
-      keyword ? 350 : 0,
-    );
+  const loadUserOptions = useCallback(async (keyword = '', page = 1) => {
+    const normalizedKeyword = keyword.trim();
+    const sequence = ++userRequestSequence.current;
+    setUsersLoading(true);
+    try {
+      const response = await API.get('/api/reconciliation/options/users', {
+        params: {
+          keyword: normalizedKeyword,
+          p: page,
+          page_size: SEARCH_PAGE_SIZE,
+        },
+      });
+      if (!response.data.success || sequence !== userRequestSequence.current) {
+        return;
+      }
+      const data = response.data.data || {};
+      const nextOptions = (data.items || []).map((user) => {
+        const username = user.username || `#${user.user_id}`;
+        return {
+          value: user.user_id,
+          label: user.username
+            ? `${user.username} (#${user.user_id})`
+            : `#${user.user_id}`,
+          username,
+        };
+      });
+      setUserOptions((previous) =>
+        page === 1 ? nextOptions : mergeOptions(previous, nextOptions),
+      );
+      setUserOptionMeta({
+        keyword: normalizedKeyword,
+        page: data.page || page,
+        total: data.total || 0,
+      });
+    } catch (_) {
+      if (page === 1 && sequence === userRequestSequence.current) {
+        setUserOptions([]);
+        setUserOptionMeta({ keyword: normalizedKeyword, page: 0, total: 0 });
+      }
+    } finally {
+      if (sequence === userRequestSequence.current) setUsersLoading(false);
+    }
   }, []);
 
-  const searchModels = useCallback((keyword = '') => {
-    if (modelSearchTimer.current) clearTimeout(modelSearchTimer.current);
-    modelSearchTimer.current = setTimeout(
-      async () => {
-        setModelsLoading(true);
-        try {
-          const response = await API.get('/api/reconciliation/options/models', {
-            params: {
-              keyword: keyword.trim(),
-              p: 1,
-              page_size: SEARCH_PAGE_SIZE,
-            },
-          });
-          if (response.data.success) {
-            const names = new Set(
-              (response.data.data?.items || [])
-                .map((model) => model.model_name)
-                .filter(Boolean),
-            );
-            setModelOptions(
-              Array.from(names).map((modelName) => ({
-                value: modelName,
-                label: modelName,
-              })),
-            );
-          }
-        } catch (_) {
-          setModelOptions([]);
-        } finally {
-          setModelsLoading(false);
-        }
-      },
-      keyword ? 350 : 0,
-    );
+  const searchUsers = useCallback(
+    (keyword = '') => {
+      if (userSearchTimer.current) clearTimeout(userSearchTimer.current);
+      userSearchTimer.current = setTimeout(
+        () => loadUserOptions(keyword, 1),
+        keyword ? 350 : 0,
+      );
+    },
+    [loadUserOptions],
+  );
+
+  const loadModelOptions = useCallback(async (keyword = '', page = 1) => {
+    const normalizedKeyword = keyword.trim();
+    const sequence = ++modelRequestSequence.current;
+    setModelsLoading(true);
+    try {
+      const response = await API.get('/api/reconciliation/options/models', {
+        params: {
+          keyword: normalizedKeyword,
+          p: page,
+          page_size: SEARCH_PAGE_SIZE,
+        },
+      });
+      if (!response.data.success || sequence !== modelRequestSequence.current) {
+        return;
+      }
+      const data = response.data.data || {};
+      const names = new Set(
+        (data.items || []).map((model) => model.model_name).filter(Boolean),
+      );
+      const nextOptions = Array.from(names).map((modelName) => ({
+        value: modelName,
+        label: modelName,
+      }));
+      setModelOptions((previous) =>
+        page === 1 ? nextOptions : mergeOptions(previous, nextOptions),
+      );
+      setModelOptionMeta({
+        keyword: normalizedKeyword,
+        page: data.page || page,
+        total: data.total || 0,
+      });
+    } catch (_) {
+      if (page === 1 && sequence === modelRequestSequence.current) {
+        setModelOptions([]);
+        setModelOptionMeta({ keyword: normalizedKeyword, page: 0, total: 0 });
+      }
+    } finally {
+      if (sequence === modelRequestSequence.current) setModelsLoading(false);
+    }
   }, []);
+
+  const searchModels = useCallback(
+    (keyword = '') => {
+      if (modelSearchTimer.current) clearTimeout(modelSearchTimer.current);
+      modelSearchTimer.current = setTimeout(
+        () => loadModelOptions(keyword, 1),
+        keyword ? 350 : 0,
+      );
+    },
+    [loadModelOptions],
+  );
+
+  const loadMoreUsers = useCallback(() => {
+    if (usersLoading || userOptions.length >= userOptionMeta.total) return;
+    loadUserOptions(userOptionMeta.keyword, userOptionMeta.page + 1);
+  }, [loadUserOptions, userOptionMeta, userOptions.length, usersLoading]);
+
+  const loadMoreModels = useCallback(() => {
+    if (modelsLoading || modelOptions.length >= modelOptionMeta.total) return;
+    loadModelOptions(modelOptionMeta.keyword, modelOptionMeta.page + 1);
+  }, [loadModelOptions, modelOptionMeta, modelOptions.length, modelsLoading]);
 
   const applyFilters = (nextFilters) => {
     setFilters(nextFilters);
@@ -267,6 +348,8 @@ const Reconciliation = () => {
     const nextFilters = createDefaultFilters();
     setUserOptions([]);
     setModelOptions([]);
+    setUserOptionMeta({ keyword: '', page: 0, total: 0 });
+    setModelOptionMeta({ keyword: '', page: 0, total: 0 });
     applyFilters(nextFilters);
   };
 
@@ -288,7 +371,7 @@ const Reconciliation = () => {
       const downloadUrl = URL.createObjectURL(response.data);
       const anchor = document.createElement('a');
       anchor.href = downloadUrl;
-      anchor.download = `${t('对账单')}_${dayjs().format('YYYY-MM-DD')}.xlsx`;
+      anchor.download = `对账单_${dayjs().format('YYYY-MM-DD')}.xlsx`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -314,6 +397,35 @@ const Reconciliation = () => {
     return null;
   }, [filters.dateRange]);
 
+  const renderUserOption = useCallback((item) => {
+    const username = item.username || String(item.label || item.value || '?');
+    let backgroundColor = 'transparent';
+    if (item.selected) {
+      backgroundColor = 'var(--semi-color-primary-light-default)';
+    } else if (item.focused) {
+      backgroundColor = 'var(--semi-color-fill-0)';
+    }
+    return (
+      <div
+        className='flex items-center gap-2'
+        style={{
+          ...item.style,
+          padding: '8px 16px',
+          cursor: item.disabled ? 'not-allowed' : 'pointer',
+          backgroundColor,
+          opacity: item.disabled ? 0.5 : 1,
+        }}
+        onMouseEnter={(event) => !item.disabled && item.onMouseEnter?.(event)}
+        onClick={(event) => !item.disabled && item.onClick?.(event)}
+      >
+        <Avatar size='extra-small' color={stringToColor(username)}>
+          {getInitials(username)}
+        </Avatar>
+        <span className='truncate'>{item.label}</span>
+      </div>
+    );
+  }, []);
+
   const columns = useMemo(
     () => [
       {
@@ -324,7 +436,7 @@ const Reconciliation = () => {
           const username = record.username || `#${record.user_id}`;
           return (
             <div className='flex items-center gap-2 min-w-[160px]'>
-              <Avatar size='small' color='blue'>
+              <Avatar size='small' color={stringToColor(username)}>
                 {getInitials(username)}
               </Avatar>
               <div className='min-w-0'>
@@ -358,7 +470,7 @@ const Reconciliation = () => {
         width: 180,
         render: (amount) => (
           <span className='font-mono font-medium tabular-nums'>
-            {convertUSDToCurrency(Number(amount || 0), 2)}
+            {formatReconciliationAmount(amount)}
           </span>
         ),
       },
@@ -416,6 +528,11 @@ const Reconciliation = () => {
           loading={usersLoading}
           onFocus={() => userOptions.length === 0 && searchUsers('')}
           onSearch={searchUsers}
+          onListScroll={(event) => {
+            if (isNearListEnd(event)) loadMoreUsers();
+          }}
+          renderOptionItem={renderUserOption}
+          emptyContent={t('无匹配用户')}
           onChange={(userId) =>
             applyFilters({ ...filters, userId: userId || undefined })
           }
@@ -433,6 +550,10 @@ const Reconciliation = () => {
           loading={modelsLoading}
           onFocus={() => modelOptions.length === 0 && searchModels('')}
           onSearch={searchModels}
+          onListScroll={(event) => {
+            if (isNearListEnd(event)) loadMoreModels();
+          }}
+          emptyContent={t('无匹配模型')}
           onChange={(modelName) =>
             applyFilters({ ...filters, modelName: modelName || undefined })
           }
@@ -523,7 +644,7 @@ const Reconciliation = () => {
               darkModeImage={
                 <IllustrationNoResultDark style={{ width: 150, height: 150 }} />
               }
-              title={t('暂无对账数据')}
+              title={t('暂无数据')}
               description={t('当前筛选条件下没有消费记录')}
               style={{ padding: 30 }}
             />

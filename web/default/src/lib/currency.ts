@@ -90,6 +90,8 @@ export interface CurrencyFormatOptions {
   digitsLarge?: number
   /** Fraction digits to use when |value| < 1 */
   digitsSmall?: number
+  /** Minimum fraction digits to keep in currency displays */
+  minimumFractionDigits?: number
   /** Whether to abbreviate thousands with k suffix */
   abbreviate?: boolean
   /** Minimal absolute value to display when rounding would produce zero */
@@ -117,6 +119,7 @@ type DisplayMeta =
 const DEFAULT_FORMAT_OPTIONS: Required<CurrencyFormatOptions> = {
   digitsLarge: 2,
   digitsSmall: 4,
+  minimumFractionDigits: 0,
   abbreviate: true,
   minimumNonZero: 0,
 }
@@ -216,6 +219,9 @@ function mergeOptions(
   return {
     digitsLarge: options.digitsLarge ?? DEFAULT_FORMAT_OPTIONS.digitsLarge,
     digitsSmall: options.digitsSmall ?? DEFAULT_FORMAT_OPTIONS.digitsSmall,
+    minimumFractionDigits:
+      options.minimumFractionDigits ??
+      DEFAULT_FORMAT_OPTIONS.minimumFractionDigits,
     abbreviate: options.abbreviate ?? DEFAULT_FORMAT_OPTIONS.abbreviate,
     minimumNonZero:
       options.minimumNonZero ?? DEFAULT_FORMAT_OPTIONS.minimumNonZero,
@@ -275,20 +281,24 @@ function formatCurrencyValue(
   const digits =
     Math.abs(value) >= 1 ? options.digitsLarge : options.digitsSmall
   const adjustedValue = adjustForMinimum(value, digits, options.minimumNonZero)
+  const minimumFractionDigits = Math.max(
+    0,
+    Math.min(options.minimumFractionDigits, digits)
+  )
 
   if (meta.kind === 'currency') {
     const formatted = new Intl.NumberFormat(undefined, {
       style: 'currency',
       currency: meta.currencyCode,
       currencyDisplay: 'narrowSymbol',
-      minimumFractionDigits: 0,
+      minimumFractionDigits,
       maximumFractionDigits: digits,
     }).format(adjustedValue)
     return formatted
   }
 
   const decimal = new Intl.NumberFormat(undefined, {
-    minimumFractionDigits: 0,
+    minimumFractionDigits,
     maximumFractionDigits: digits,
   }).format(adjustedValue)
 

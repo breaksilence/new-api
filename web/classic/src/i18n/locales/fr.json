@@ -3706,6 +3706,8 @@
         "按日": "Par jour",
         "按月": "Par mois",
         "只读汇总现有消费日志，不影响原有统计。": "Synthèse en lecture seule des journaux de consommation existants, sans impact sur les statistiques actuelles.",
+        "无匹配用户": "Aucun utilisateur correspondant",
+        "无匹配模型": "Aucun modèle correspondant",
         "暂无对账数据": "Aucune donnée de rapprochement",
         "当前筛选条件下没有消费记录": "Aucun enregistrement de consommation ne correspond aux filtres actuels"
     }

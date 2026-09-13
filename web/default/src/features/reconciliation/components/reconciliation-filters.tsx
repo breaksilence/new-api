@@ -16,12 +16,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMemo, useState, type ReactNode } from 'react'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useDebounce } from '@/hooks'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
 import dayjs from '@/lib/dayjs'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -63,6 +65,7 @@ type RangePreset = '7' | '30' | '90' | 'custom'
 interface SearchOption {
   label: string
   value: string
+  avatarName?: string
 }
 
 interface AsyncSearchComboboxProps {
@@ -75,6 +78,8 @@ interface AsyncSearchComboboxProps {
   emptyText: string
   onSearchChange: (value: string) => void
   onValueChange: (value?: string) => void
+  onReachEnd?: () => void
+  renderOption?: (option: SearchOption) => ReactNode
 }
 
 function AsyncSearchCombobox({
@@ -87,9 +92,11 @@ function AsyncSearchCombobox({
   emptyText,
   onSearchChange,
   onValueChange,
+  onReachEnd,
+  renderOption,
 }: AsyncSearchComboboxProps) {
-  const labelMap = useMemo(
-    () => new Map(options.map((option) => [option.value, option.label])),
+  const optionMap = useMemo(
+    () => new Map(options.map((option) => [option.value, option])),
     [options]
   )
   const items = useMemo(() => {
@@ -104,14 +111,18 @@ function AsyncSearchCombobox({
       items={items}
       value={value ?? null}
       inputValue={inputValue}
-      itemToStringLabel={(item) => labelMap.get(item) ?? selectedLabel ?? item}
+      itemToStringLabel={(item) =>
+        optionMap.get(item)?.label ?? selectedLabel ?? item
+      }
       onInputValueChange={(next) => {
         setInputValue(next)
         onSearchChange(next)
       }}
       onValueChange={(next) => {
         const selected = next ?? undefined
-        setInputValue(selected ? (labelMap.get(selected) ?? selected) : '')
+        setInputValue(
+          selected ? (optionMap.get(selected)?.label ?? selected) : ''
+        )
         onSearchChange('')
         onValueChange(selected)
       }}
@@ -123,12 +134,25 @@ function AsyncSearchCombobox({
         showClear={Boolean(value || inputValue)}
       />
       <ComboboxContent>
-        <ComboboxList>
-          {(item: string) => (
-            <ComboboxItem key={item} value={item}>
-              {labelMap.get(item) ?? selectedLabel ?? item}
-            </ComboboxItem>
-          )}
+        <ComboboxList
+          onScroll={(event) => {
+            const list = event.currentTarget
+            if (list.scrollHeight - list.scrollTop - list.clientHeight <= 32) {
+              onReachEnd?.()
+            }
+          }}
+        >
+          {(item: string) => {
+            const option = optionMap.get(item) ?? {
+              value: item,
+              label: selectedLabel ?? item,
+            }
+            return (
+              <ComboboxItem key={item} value={item}>
+                {renderOption ? renderOption(option) : option.label}
+              </ComboboxItem>
+            )
+          }}
         </ComboboxList>
         <ComboboxEmpty>{isLoading ? '…' : emptyText}</ComboboxEmpty>
       </ComboboxContent>
@@ -164,14 +188,20 @@ export function ReconciliationFilters({
   const debouncedUserSearch = useDebounce(userSearch, 350)
   const debouncedModelSearch = useDebounce(modelSearch, 350)
 
-  const usersQuery = useQuery({
+  const usersQuery = useInfiniteQuery({
     queryKey: ['reconciliation-user-options', debouncedUserSearch],
-    queryFn: () =>
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) =>
       getReconciliationUserOptions({
         keyword: debouncedUserSearch.trim(),
-        page: 1,
+        page: pageParam,
         pageSize: 20,
       }),
+    getNextPageParam: (lastPage) => {
+      const data = lastPage.data
+      if (!data || data.page * data.page_size >= data.total) return undefined
+      return data.page + 1
+    },
   })
   const selectedUserQuery = useQuery({
     queryKey: ['reconciliation-selected-user', value.userId],
@@ -183,33 +213,47 @@ export function ReconciliationFilters({
       }),
     enabled: Boolean(value.userId),
   })
-  const modelsQuery = useQuery({
+  const modelsQuery = useInfiniteQuery({
     queryKey: ['reconciliation-model-options', debouncedModelSearch],
-    queryFn: () =>
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) =>
       getReconciliationModelOptions({
         keyword: debouncedModelSearch.trim(),
-        page: 1,
+        page: pageParam,
         pageSize: 20,
       }),
+    getNextPageParam: (lastPage) => {
+      const data = lastPage.data
+      if (!data || data.page * data.page_size >= data.total) return undefined
+      return data.page + 1
+    },
   })
 
   const userOptions = useMemo<SearchOption[]>(() => {
-    return (usersQuery.data?.data?.items ?? []).map((user) => ({
-      value: String(user.user_id),
-      label: user.username
-        ? `${user.username} (#${user.user_id})`
-        : `#${user.user_id}`,
-    }))
-  }, [usersQuery.data?.data?.items])
+    return (usersQuery.data?.pages ?? []).flatMap((page) =>
+      (page.data?.items ?? []).map((user) => {
+        const avatarName = user.username || `#${user.user_id}`
+        return {
+          value: String(user.user_id),
+          label: user.username
+            ? `${user.username} (#${user.user_id})`
+            : `#${user.user_id}`,
+          avatarName,
+        }
+      })
+    )
+  }, [usersQuery.data?.pages])
   const modelOptions = useMemo<SearchOption[]>(() => {
     const names = new Set(
-      (modelsQuery.data?.data?.items ?? []).map((model) => model.model_name)
+      (modelsQuery.data?.pages ?? []).flatMap((page) =>
+        (page.data?.items ?? []).map((model) => model.model_name)
+      )
     )
     return Array.from(names).map((modelName) => ({
       value: modelName,
       label: modelName,
     }))
-  }, [modelsQuery.data?.data?.items])
+  }, [modelsQuery.data?.pages])
   const selectedUser = selectedUserQuery.data?.data?.items[0]
   const selectedUserLabel = selectedUser
     ? selectedUser.username
@@ -319,6 +363,24 @@ export function ReconciliationFilters({
             onValueChange={(next) =>
               onChange({ userId: next ? Number(next) : undefined })
             }
+            onReachEnd={() => {
+              if (usersQuery.hasNextPage && !usersQuery.isFetchingNextPage) {
+                void usersQuery.fetchNextPage()
+              }
+            }}
+            renderOption={(option) => {
+              const avatarName = option.avatarName ?? option.label
+              return (
+                <>
+                  <Avatar size='sm'>
+                    <AvatarFallback style={getUserAvatarStyle(avatarName)}>
+                      {getUserAvatarFallback(avatarName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className='truncate'>{option.label}</span>
+                </>
+              )
+            }}
           />
         </div>
         <div className='flex min-w-0 flex-col gap-1.5'>
@@ -336,6 +398,11 @@ export function ReconciliationFilters({
             emptyText={t('No matching models')}
             onSearchChange={setModelSearch}
             onValueChange={(next) => onChange({ modelName: next })}
+            onReachEnd={() => {
+              if (modelsQuery.hasNextPage && !modelsQuery.isFetchingNextPage) {
+                void modelsQuery.fetchNextPage()
+              }
+            }}
           />
         </div>
         <div className='flex min-w-0 flex-col gap-1.5'>

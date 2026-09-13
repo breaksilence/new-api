@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { dataScheme as vchartDefaultDataScheme } from '@visactor/vchart/esm/theme/color-scheme/builtin/default'
+import { getUserAvatarColor } from '@/lib/avatar'
 import { getCurrencyDisplay } from '@/lib/currency'
 import { formatChartTime, type TimeGranularity } from '@/lib/time'
 import type {
@@ -318,11 +319,7 @@ export function processChartData(
   const chartTimes: string[] = canFillFromRange
     ? (() => {
         const pts: string[] = []
-        for (
-          let t = startTimestamp;
-          t <= endTimestamp;
-          t += intervalSec
-        ) {
+        for (let t = startTimestamp; t <= endTimestamp; t += intervalSec) {
           pts.push(formatChartTime(t, timeGranularity))
         }
         return pts
@@ -813,13 +810,10 @@ export function processUserChartData(
     Usage: Number((quota / quotaPerUnit).toFixed(4)),
   }))
 
-  const userColorMap = topUsers.reduce<Record<string, string>>(
-    (acc, user, i) => {
-      acc[user] = userColorRange[i % userColorRange.length]
-      return acc
-    },
-    {}
-  )
+  const userColorMap = topUsers.reduce<Record<string, string>>((acc, user) => {
+    acc[user] = getUserAvatarColor(user)
+    return acc
+  }, {})
 
   const timeUserMap = new Map<string, Map<string, number>>()
   const allTimePoints = new Set<string>()
