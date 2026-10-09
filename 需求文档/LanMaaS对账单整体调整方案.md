@@ -103,7 +103,7 @@
 3. 固定只读查询 `LOG_DB` 中的 `logs` 表。
 4. 固定限制 `type = LogTypeConsume`。
 5. 用户与模型条件使用精确匹配。
-6. 按 `user_id`、`model_name` 和 `period` 分组。
+6. SQL 使用整数时间桶按 `user_id`、`model_name` 和 `period_index` 分组；日期文本在 Go 中根据已校验的自然日或自然月边界生成，避免对每条日志执行数据库日期格式化函数。
 7. 使用 `SUM(quota)` 得到聚合额度。
 8. 使用相同条件的分组子查询计算 `total`。
 9. 列表查询应用稳定排序、`LIMIT` 和 `OFFSET`。
@@ -138,13 +138,13 @@
 
 ### 5.5 数据库兼容
 
-| 数据库 | 日粒度表达式方向 | 月粒度表达式方向 |
+| 数据库 | 日粒度时间桶 | 月粒度时间桶 |
 | --- | --- | --- |
-| SQLite | `strftime('%Y-%m-%d', created_at, 'unixepoch', 'localtime')` | `strftime('%Y-%m', created_at, 'unixepoch', 'localtime')` |
-| MySQL | `DATE_FORMAT(FROM_UNIXTIME(created_at), '%Y-%m-%d')` | `DATE_FORMAT(FROM_UNIXTIME(created_at), '%Y-%m')` |
-| PostgreSQL | `TO_CHAR(TO_TIMESTAMP(created_at), 'YYYY-MM-DD')` | `TO_CHAR(TO_TIMESTAMP(created_at), 'YYYY-MM')` |
+| SQLite | 对 `(created_at - start_timestamp) / 86400` 取整数 | 使用由 Go 生成的自然月结束时间戳 `CASE` 映射为整数序号 |
+| MySQL | 使用整数除法 `DIV 86400` | 使用由 Go 生成的自然月结束时间戳 `CASE` 映射为整数序号 |
+| PostgreSQL | 使用数值除法并向下取整 | 使用由 Go 生成的自然月结束时间戳 `CASE` 映射为整数序号 |
 
-日期表达式由新增模型文件中的单一函数返回。其他新增代码使用 GORM 参数绑定和通用查询构造。
+查询只在 SQL 中返回整数 `period_index`，Go 再把它映射为 `YYYY-MM-DD` 或 `YYYY-MM`。这样不依赖数据库会话时区，也不在百万级日志上逐行执行 `DATE_FORMAT`、`strftime` 或 `TO_CHAR`。分页总数查询只保留分组键，不再执行无用的 `MAX(username)` 和 `SUM(quota)`。其他新增代码继续使用 GORM 参数绑定和通用查询构造。
 
 在不增加索引的约束下，如果生产环境查询较慢，只能先采用：
 

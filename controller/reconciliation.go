@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	reconciliationListTimeout   = 30 * time.Second
-	reconciliationExportTimeout = 2 * time.Minute
+	reconciliationListTimeout   = 300 * time.Second
+	reconciliationExportTimeout = 300 * time.Second
 )
 
 func parseReconciliationIntQuery(c *gin.Context, key string, defaultValue int) (int, error) {
