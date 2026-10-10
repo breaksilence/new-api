@@ -26,7 +26,7 @@ func TestReconciliationBillsAggregateConsumeLogs(t *testing.T) {
 
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&Log{}))
+	require.NoError(t, db.AutoMigrate(&Log{}, &ReconciliationDailySummary{}, &ReconciliationArchiveState{}))
 	LOG_DB = db
 	common.UsingSQLite = true
 	common.UsingMySQL = false
@@ -48,9 +48,17 @@ func TestReconciliationBillsAggregateConsumeLogs(t *testing.T) {
 		EndTimestamp:   dayTwo.AddDate(0, 0, 1).Unix(),
 		Granularity:    "day",
 	}
-	total, err := CountReconciliationBills(context.Background(), filter)
+	total, totalQuota, err := GetReconciliationBillsSummary(context.Background(), filter)
 	require.NoError(t, err)
 	require.EqualValues(t, 2, total)
+	require.EqualValues(t, 750, totalQuota)
+
+	userFilter := filter
+	userFilter.UserID = 1
+	filteredTotal, filteredQuota, err := GetReconciliationBillsSummary(context.Background(), userFilter)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, filteredTotal)
+	require.EqualValues(t, 350, filteredQuota)
 
 	items, err := GetReconciliationBills(context.Background(), filter, 0, 20)
 	require.NoError(t, err)
@@ -63,80 +71,40 @@ func TestReconciliationBillsAggregateConsumeLogs(t *testing.T) {
 	require.EqualValues(t, 350, items[1].Quota)
 }
 
-func TestReconciliationPeriodPlanAvoidsDatabaseDateFormatting(t *testing.T) {
-	originalSQLite := common.UsingSQLite
-	originalMySQL := common.UsingMySQL
-	originalPostgreSQL := common.UsingPostgreSQL
+func TestReconciliationPeriodExpression(t *testing.T) {
+	originalLocation := time.Local
 	t.Cleanup(func() {
-		common.UsingSQLite = originalSQLite
-		common.UsingMySQL = originalMySQL
-		common.UsingPostgreSQL = originalPostgreSQL
-	})
-
-	start, err := time.ParseInLocation(time.DateOnly, "2026-09-01", time.Local)
-	require.NoError(t, err)
-	filter := dto.ReconciliationFilter{
-		StartTimestamp: start.Unix(),
-		EndTimestamp:   start.AddDate(0, 0, 30).Unix(),
-		Granularity:    "day",
-	}
-
-	for _, database := range []string{"sqlite", "postgres", "mysql"} {
-		common.UsingSQLite = database == "sqlite"
-		common.UsingPostgreSQL = database == "postgres"
-		common.UsingMySQL = database == "mysql"
-
-		plan := buildReconciliationPeriodPlan(filter)
-		require.Len(t, plan.labels, 30)
-		require.Equal(t, "2026-09-01", plan.labels[0])
-		require.Equal(t, "2026-09-30", plan.labels[29])
-		require.NotContains(t, plan.expression, "DATE_FORMAT")
-		require.NotContains(t, plan.expression, "FROM_UNIXTIME")
-		require.NotContains(t, plan.expression, "strftime")
-		require.NotContains(t, plan.expression, "TO_CHAR")
-	}
-}
-
-func TestReconciliationBillsAggregateByMonthWithoutDateFormatting(t *testing.T) {
-	originalLogDB := LOG_DB
-	originalSQLite := common.UsingSQLite
-	originalMySQL := common.UsingMySQL
-	originalPostgreSQL := common.UsingPostgreSQL
-	t.Cleanup(func() {
-		LOG_DB = originalLogDB
-		common.UsingSQLite = originalSQLite
-		common.UsingMySQL = originalMySQL
-		common.UsingPostgreSQL = originalPostgreSQL
+		time.Local = originalLocation
 	})
 
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&Log{}))
-	LOG_DB = db
-	common.UsingSQLite = true
-	common.UsingMySQL = false
-	common.UsingPostgreSQL = false
-
-	start, err := time.ParseInLocation(time.DateOnly, "2026-09-15", time.Local)
-	require.NoError(t, err)
-	end, err := time.ParseInLocation(time.DateOnly, "2026-10-16", time.Local)
-	require.NoError(t, err)
-	require.NoError(t, db.Create(&[]Log{
-		{UserId: 1, Username: "alice", CreatedAt: start.Add(time.Hour).Unix(), Type: LogTypeConsume, ModelName: "gpt-5", Quota: 100},
-		{UserId: 1, Username: "alice", CreatedAt: start.AddDate(0, 1, 0).Unix(), Type: LogTypeConsume, ModelName: "gpt-5", Quota: 200},
-	}).Error)
-
-	items, err := GetReconciliationBills(context.Background(), dto.ReconciliationFilter{
-		StartTimestamp: start.Unix(),
-		EndTimestamp:   end.Unix(),
-		Granularity:    "month",
-	}, 0, 20)
-	require.NoError(t, err)
-	require.Len(t, items, 2)
-	require.Equal(t, "2026-10", items[0].Period)
-	require.EqualValues(t, 200, items[0].Quota)
-	require.Equal(t, "2026-09", items[1].Period)
-	require.EqualValues(t, 100, items[1].Quota)
+	for _, testCase := range []struct {
+		name, zone, start, end, timestamp, granularity, expected string
+	}{
+		{"Shanghai midnight", "Asia/Shanghai", "2026-09-30", "2026-10-02", "2026-10-01 00:00:00", "day", "2026-10-01"},
+		{"Shanghai month end", "Asia/Shanghai", "2026-09-30", "2026-10-02", "2026-09-30 23:59:59", "month", "2026-09"},
+		{"Shanghai month start", "Asia/Shanghai", "2026-09-30", "2026-10-02", "2026-10-01 00:00:00", "month", "2026-10"},
+		{"DST short day end", "America/New_York", "2026-03-08", "2026-03-10", "2026-03-08 23:59:59", "day", "2026-03-08"},
+		{"DST short day next midnight", "America/New_York", "2026-03-08", "2026-03-10", "2026-03-09 00:00:00", "day", "2026-03-09"},
+		{"DST long day end", "America/New_York", "2026-11-01", "2026-11-03", "2026-11-01 23:59:59", "day", "2026-11-01"},
+		{"DST long day next midnight", "America/New_York", "2026-11-01", "2026-11-03", "2026-11-02 00:00:00", "day", "2026-11-02"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			time.Local, err = time.LoadLocation(testCase.zone)
+			require.NoError(t, err)
+			start, parseErr := time.ParseInLocation(time.DateOnly, testCase.start, time.Local)
+			require.NoError(t, parseErr)
+			end, parseErr := time.ParseInLocation(time.DateOnly, testCase.end, time.Local)
+			require.NoError(t, parseErr)
+			value, parseErr := time.ParseInLocation(time.DateTime, testCase.timestamp, time.Local)
+			require.NoError(t, parseErr)
+			expression := reconciliationPeriodExpression(testCase.granularity, "created_at", reconciliationTimeRange{start.Unix(), end.Unix()})
+			var period string
+			require.NoError(t, db.Raw("SELECT "+expression+" AS period FROM (SELECT ? AS created_at) AS sample", value.Unix()).Scan(&period).Error)
+			require.Equal(t, testCase.expected, period)
+		})
+	}
 }
 
 func TestReconciliationOptionsUseConsumeLogs(t *testing.T) {
@@ -147,7 +115,7 @@ func TestReconciliationOptionsUseConsumeLogs(t *testing.T) {
 
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&Log{}))
+	require.NoError(t, db.AutoMigrate(&Log{}, &ReconciliationDailySummary{}, &ReconciliationArchiveState{}))
 	LOG_DB = db
 
 	logs := []Log{
@@ -181,4 +149,110 @@ func TestReconciliationOptionsUseConsumeLogs(t *testing.T) {
 		{ModelName: "deepseek-reasoner"},
 		{ModelName: "deepseek-v4-flash"},
 	}, models)
+}
+
+func TestReconciliationArchiveCombinesSummaryAndRawExactlyOnce(t *testing.T) {
+	originalLogDB := LOG_DB
+	originalSQLite := common.UsingSQLite
+	originalMySQL := common.UsingMySQL
+	originalPostgreSQL := common.UsingPostgreSQL
+	t.Cleanup(func() {
+		LOG_DB = originalLogDB
+		common.UsingSQLite = originalSQLite
+		common.UsingMySQL = originalMySQL
+		common.UsingPostgreSQL = originalPostgreSQL
+	})
+
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&Log{}, &ReconciliationDailySummary{}, &ReconciliationArchiveState{}))
+	LOG_DB = db
+	common.UsingSQLite = true
+	common.UsingMySQL = false
+	common.UsingPostgreSQL = false
+
+	dayOne, err := time.ParseInLocation(time.DateOnly, "2026-09-01", time.Local)
+	require.NoError(t, err)
+	dayTwo := dayOne.AddDate(0, 0, 1)
+	logs := []Log{
+		{UserId: 1, Username: "alice", CreatedAt: dayOne.Add(time.Hour).Unix(), Type: LogTypeConsume, ModelName: "gpt-5", Quota: 100},
+		{UserId: 1, Username: "alice", CreatedAt: dayOne.Add(2 * time.Hour).Unix(), Type: LogTypeConsume, ModelName: "gpt-5", Quota: 250},
+		{UserId: 1, Username: "alice", CreatedAt: dayTwo.Add(time.Hour).Unix(), Type: LogTypeConsume, ModelName: "gpt-5", Quota: 400},
+		{UserId: 2, Username: "bob", CreatedAt: dayTwo.Add(2 * time.Hour).Unix(), Type: LogTypeConsume, ModelName: "claude", Quota: 500},
+	}
+	require.NoError(t, db.Create(&logs).Error)
+
+	rows, err := RebuildReconciliationDailySummary(context.Background(), dayOne.Unix())
+	require.NoError(t, err)
+	require.Equal(t, 1, rows)
+
+	filter := dto.ReconciliationFilter{
+		StartTimestamp: dayOne.Unix(),
+		EndTimestamp:   dayTwo.AddDate(0, 0, 1).Unix(),
+		Granularity:    "day",
+	}
+	items, err := GetReconciliationBills(context.Background(), filter, 0, 20)
+	require.NoError(t, err)
+	require.Len(t, items, 3)
+	require.EqualValues(t, 350, items[2].Quota, "archived raw logs must not be counted again")
+	total, totalQuota, err := GetReconciliationBillsSummary(context.Background(), filter)
+	require.NoError(t, err)
+	require.EqualValues(t, 3, total)
+	require.EqualValues(t, 1250, totalQuota, "summary and raw tail totals must not overlap")
+
+	monthFilter := filter
+	monthFilter.Granularity = "month"
+	monthFilter.UserID = 1
+	monthItems, err := GetReconciliationBills(context.Background(), monthFilter, 0, 20)
+	require.NoError(t, err)
+	require.Equal(t, []dto.ReconciliationBill{{
+		UserID:    1,
+		Username:  "alice",
+		ModelName: "gpt-5",
+		Period:    "2026-09",
+		Quota:     750,
+	}}, monthItems, "daily summary and raw tail must merge into one monthly row")
+
+	rows, err = RebuildReconciliationDailySummary(context.Background(), dayOne.Unix())
+	require.NoError(t, err)
+	require.Equal(t, 1, rows)
+	var summaryRows int64
+	require.NoError(t, db.Model(&ReconciliationDailySummary{}).Count(&summaryRows).Error)
+	require.EqualValues(t, 1, summaryRows, "retrying an archived day must replace rather than append")
+
+	users, total, err := GetReconciliationUserOptions(context.Background(), "", 0, 0, 20)
+	require.NoError(t, err)
+	require.EqualValues(t, 2, total)
+	require.Equal(t, []dto.ReconciliationUserOption{
+		{UserID: 1, Username: "alice"},
+		{UserID: 2, Username: "bob"},
+	}, users)
+	models, total, err := GetReconciliationModelOptions(context.Background(), "", 0, 20)
+	require.NoError(t, err)
+	require.EqualValues(t, 2, total)
+	require.Equal(t, []dto.ReconciliationModelOption{
+		{ModelName: "claude"},
+		{ModelName: "gpt-5"},
+	}, models)
+}
+
+func TestReconciliationArchiveExtendsOnlyAdjacentDays(t *testing.T) {
+	state := &ReconciliationArchiveState{}
+	day, err := time.ParseInLocation(time.DateOnly, "2026-09-10", time.Local)
+	require.NoError(t, err)
+
+	require.NoError(t, updateReconciliationArchiveBounds(state, day.Unix()))
+	require.Equal(t, day.Unix(), state.SummaryStart)
+	require.Equal(t, day.Unix(), state.ArchivedThrough)
+
+	next := day.AddDate(0, 0, 1)
+	require.NoError(t, updateReconciliationArchiveBounds(state, next.Unix()))
+	require.Equal(t, next.Unix(), state.ArchivedThrough)
+
+	previous := day.AddDate(0, 0, -1)
+	require.NoError(t, updateReconciliationArchiveBounds(state, previous.Unix()))
+	require.Equal(t, previous.Unix(), state.SummaryStart)
+
+	err = updateReconciliationArchiveBounds(state, day.AddDate(0, 0, 3).Unix())
+	require.Error(t, err)
 }

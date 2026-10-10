@@ -128,6 +128,7 @@ const Reconciliation = () => {
   const [filters, setFilters] = useState(createDefaultFilters);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
+  const [totalAmountUSD, setTotalAmountUSD] = useState(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [loading, setLoading] = useState(false);
@@ -170,9 +171,15 @@ const Reconciliation = () => {
   );
 
   const loadBills = useCallback(
-    async (nextFilters, nextPage = 1, nextPageSize = DEFAULT_PAGE_SIZE) => {
+    async (
+      nextFilters,
+      nextPage = 1,
+      nextPageSize = DEFAULT_PAGE_SIZE,
+      refreshTotal = true,
+    ) => {
       if (!validateFilters(nextFilters)) return;
       const sequence = ++requestSequence.current;
+      if (refreshTotal) setTotalAmountUSD(null);
       setLoading(true);
       try {
         const response = await API.get('/api/reconciliation/bills', {
@@ -191,6 +198,11 @@ const Reconciliation = () => {
         const data = response.data.data || {};
         setItems(data.items || []);
         setTotal(data.total || 0);
+        setTotalAmountUSD((previous) =>
+          refreshTotal || previous === null
+            ? Number(data.total_amount_usd || 0)
+            : previous,
+        );
         setPage(data.page || nextPage);
         setPageSize(data.page_size || nextPageSize);
       } catch (_) {
@@ -334,9 +346,14 @@ const Reconciliation = () => {
 
   const applyFilters = (nextFilters) => {
     setFilters(nextFilters);
+    setTotalAmountUSD(null);
     if (validateFilters(nextFilters)) {
       setPage(1);
       loadBills(nextFilters, 1, pageSize);
+    } else {
+      // An earlier valid request must not restore a total for invalid filters.
+      requestSequence.current += 1;
+      setLoading(false);
     }
   };
 
@@ -609,47 +626,57 @@ const Reconciliation = () => {
           currentPage: page,
           pageSize,
           total,
-          onPageChange: (nextPage) => {
-            setPage(nextPage);
-            loadBills(filters, nextPage, pageSize);
-          },
-          onPageSizeChange: (nextPageSize) => {
-            setPage(1);
+          // Semi fires both individual callbacks on a page-size change. Use
+          // the combined callback so one action sends one consistent request.
+          onChange: (nextPage, nextPageSize) => {
+            const targetPage = nextPageSize === pageSize ? nextPage : 1;
+            setPage(targetPage);
             setPageSize(nextPageSize);
-            loadBills(filters, 1, nextPageSize);
+            loadBills(filters, targetPage, nextPageSize, false);
           },
           isMobile,
           t,
         })}
         t={t}
       >
-        <CardTable
-          columns={columns}
-          dataSource={items}
-          rowKey={(record) =>
-            `${record.user_id}-${record.period}-${record.model_name}`
-          }
-          loading={loading}
-          pagination={false}
-          hidePagination
-          tableLayout='fixed'
-          className='w-full rounded-xl overflow-hidden'
-          style={{ width: '100%' }}
-          size='small'
-          empty={
-            <Empty
-              image={
-                <IllustrationNoResult style={{ width: 150, height: 150 }} />
-              }
-              darkModeImage={
-                <IllustrationNoResultDark style={{ width: 150, height: 150 }} />
-              }
-              title={t('暂无数据')}
-              description={t('当前筛选条件下没有消费记录')}
-              style={{ padding: 30 }}
-            />
-          }
-        />
+        <>
+          <div className='flex items-center px-2 pb-2'>
+            <Typography.Text strong>
+              {t('合计')}：
+              {totalAmountUSD !== null &&
+                formatReconciliationAmount(totalAmountUSD)}
+            </Typography.Text>
+          </div>
+          <CardTable
+            columns={columns}
+            dataSource={items}
+            rowKey={(record) =>
+              `${record.user_id}-${record.period}-${record.model_name}`
+            }
+            loading={loading}
+            pagination={false}
+            hidePagination
+            tableLayout='fixed'
+            className='w-full rounded-xl overflow-hidden'
+            style={{ width: '100%' }}
+            size='small'
+            empty={
+              <Empty
+                image={
+                  <IllustrationNoResult style={{ width: 150, height: 150 }} />
+                }
+                darkModeImage={
+                  <IllustrationNoResultDark
+                    style={{ width: 150, height: 150 }}
+                  />
+                }
+                title={t('暂无数据')}
+                description={t('当前筛选条件下没有消费记录')}
+                style={{ padding: 30 }}
+              />
+            }
+          />
+        </>
       </CardPro>
     </div>
   );

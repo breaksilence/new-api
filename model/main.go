@@ -294,6 +294,11 @@ func migrateDB() error {
 			return err
 		}
 	}
+	if os.Getenv("LOG_SQL_DSN") == "" {
+		if err := migrateReconciliationTables(DB); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -363,16 +368,20 @@ func migrateDBFast() error {
 			return err
 		}
 	}
+	if os.Getenv("LOG_SQL_DSN") == "" {
+		if err := migrateReconciliationTables(DB); err != nil {
+			return err
+		}
+	}
 	common.SysLog("database migrated")
 	return nil
 }
 
 func migrateLOGDB() error {
-	var err error
-	if err = LOG_DB.AutoMigrate(&Log{}); err != nil {
+	if err := LOG_DB.AutoMigrate(&Log{}); err != nil {
 		return err
 	}
-	return nil
+	return migrateReconciliationTables(LOG_DB)
 }
 
 type sqliteColumnDef struct {

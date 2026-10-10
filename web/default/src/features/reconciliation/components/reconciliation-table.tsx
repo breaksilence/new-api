@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   type ColumnDef,
@@ -27,8 +27,10 @@ import { useTranslation } from 'react-i18next'
 import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
 import { formatBillingCurrencyFromUSD } from '@/lib/currency'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { DataTableColumnHeader, DataTablePage } from '@/components/data-table'
 import { getReconciliationBills } from '../api'
+import { reconciliationBillsQueryOptions } from '../queries'
 import type { ReconciliationBill, ReconciliationBillsParams } from '../types'
 
 interface ReconciliationTableProps {
@@ -41,21 +43,20 @@ export function ReconciliationTable({
   onPaginationChange,
 }: ReconciliationTableProps) {
   const { t } = useTranslation()
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['reconciliation-bills', params],
-    queryFn: async () => {
-      const response = await getReconciliationBills(params)
-      if (!response.success) {
-        throw new Error(response.message || 'Request failed')
-      }
-      return {
-        items: response.data?.items ?? [],
-        total: response.data?.total ?? 0,
-      }
-    },
-    placeholderData: (previousData) => previousData,
-    retry: false,
-  })
+  const [totalAmountUSD, setTotalAmountUSD] = useState<number | null>(null)
+  const { data, isLoading, isFetching, isSuccess, isFetchedAfterMount } =
+    useQuery(reconciliationBillsQueryOptions(params, getReconciliationBills))
+
+  // The parent resets this component only when filters change. Keep the first
+  // successful total across pagination, and wait for fresh data on a new scope.
+  if (
+    totalAmountUSD === null &&
+    isSuccess &&
+    isFetchedAfterMount &&
+    !isFetching
+  ) {
+    setTotalAmountUSD(data.totalAmountUSD)
+  }
 
   const columns = useMemo<ColumnDef<ReconciliationBill>[]>(
     () => [
@@ -173,7 +174,20 @@ export function ReconciliationTable({
       emptyTitle={t('No data')}
       emptyDescription={t('No consumption records match the current filters.')}
       skeletonKeyPrefix='reconciliation-skeleton'
-      toolbar={null}
+      toolbar={
+        <div className='flex items-center px-1'>
+          <Badge variant='secondary'>
+            {t('Filtered total')}:{' '}
+            {totalAmountUSD !== null &&
+              formatBillingCurrencyFromUSD(totalAmountUSD, {
+                abbreviate: false,
+                digitsLarge: 2,
+                digitsSmall: 2,
+                minimumFractionDigits: 2,
+              })}
+          </Badge>
+        </div>
+      }
       showPagination={(data?.total ?? 0) > 0}
       tableHeaderClassName='bg-muted/30 sticky top-0 z-10'
       mobileProps={{

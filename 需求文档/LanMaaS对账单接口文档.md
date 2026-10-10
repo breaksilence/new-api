@@ -4,18 +4,18 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 文档版本 | V1.2 |
+| 文档版本 | V1.4 |
 | 编制日期 | 2026-09-10 |
 | 适用范围 | `v1.0.0-rc.10-lx-1.1` 分支后续开发 |
-| 核心约束 | 数据库结构不变；不调整原有统计逻辑；只读分析现有 `logs` 数据；兼容 SQLite、MySQL、PostgreSQL |
+| 核心约束 | 不调整原有统计逻辑；`logs` 保留为事实数据；新增独立日汇总；兼容 SQLite、MySQL、PostgreSQL |
 
 ## 1 文档定位
 
-本文件定义对账单功能的后端接口契约。方案新增四个管理员接口，以现有消费日志为只读数据源，在请求发生时完成筛选选项查询与账单聚合。
+本文件定义对账单功能的后端接口契约。方案新增四个管理员接口；接口参数和响应不受内部归档实现影响。现有消费日志仍是事实数据，服务端自动合并已完成的日汇总与当天/尚未归档的消费日志。
 
 - 不依赖 `quota_data` 的异步汇总结果。
-- 不新增或修改数据库表、字段、索引。
-- 不生成或写入新的统计数据。
+- 自动新增两张对账专用表，不修改原有表结构，不删除原始日志。
+- 仅主节点在后台生成按天汇总并逐日回填历史。
 - 不修改现有日志统计与数据看板接口、控制器和模型方法。
 - 用户筛选从消费日志中提取实际产生过消费的用户快照。
 - 模型筛选从消费日志中提取实际产生过消费的模型名称。
@@ -37,7 +37,7 @@
 | 认证授权 | 新增接口沿用现有会话认证并使用 `middleware.AdminAuth`。 |
 | 响应封装 | JSON 接口沿用 `success`、`message`、`data` 结构。 |
 | 日期格式 | `start_date` 与 `end_date` 使用 `YYYY-MM-DD`，起止日期均包含在统计范围内。 |
-| 时间边界 | 将结束日期转换为次日零点，查询条件使用 `created_at >= start` 且 `created_at < endExclusive`。 |
+| 时间边界 | 使用开始日期与结束日期次日的第一个有效本地时刻作为边界（通常为零点，兼容午夜夏令时），查询条件使用 `created_at >= start` 且 `created_at < endExclusive`。 |
 | 时区 | 日期边界与 `period` 按应用部署时区 `time.Local` 计算。 |
 | 统计粒度 | `granularity` 只允许 `day` 或 `month`。日粒度返回 `YYYY-MM-DD`，月粒度返回 `YYYY-MM`。 |
 | 费用口径 | `amount_usd = quota / QuotaPerUnit`。页面继续使用现有账单货币格式化逻辑。 |
@@ -81,6 +81,8 @@ GET /api/reconciliation/bills?start_date=2026-08-10&end_date=2026-09-08&user_id=
     "page": 1,
     "page_size": 20,
     "total": 128,
+    "total_quota": 617280000,
+    "total_amount_usd": 1234.56,
     "items": [
       {
         "user_id": 12,
@@ -102,6 +104,8 @@ GET /api/reconciliation/bills?start_date=2026-08-10&end_date=2026-09-08&user_id=
 | `data.page` | integer | 当前页码。 |
 | `data.page_size` | integer | 当前每页条数。 |
 | `data.total` | integer | 符合条件的聚合行总数。 |
+| `data.total_quota` | integer | 当前全部筛选条件下的消费额度总和，不受分页影响。 |
+| `data.total_amount_usd` | number | 当前全部筛选条件下的美元基准费用合计，不受分页影响。 |
 | `data.items[].user_id` | integer | 用户编号，用于身份分组和行标识。 |
 | `data.items[].username` | string | 消费日志中的账号快照。 |
 | `data.items[].period` | string | `YYYY-MM-DD` 或 `YYYY-MM`。 |
@@ -111,14 +115,16 @@ GET /api/reconciliation/bills?start_date=2026-08-10&end_date=2026-09-08&user_id=
 
 ### 4.4 聚合规则
 
-1. 数据源固定为 `LOG_DB` 中现有的 `logs` 表。
+1. 事实数据源固定为 `LOG_DB` 中现有的 `logs` 表；已完成归档的自然日可读取对账日汇总表。
 2. 基础条件固定为 `logs.type = LogTypeConsume`。
 3. 日期使用左闭右开的时间范围。
 4. 分组键为 `user_id`、`model_name` 和 `period`。
 5. `username` 使用组内非空账号快照输出，不参与身份判定。
 6. `day` 按自然日聚合，`month` 按自然月聚合；切换粒度不改变原始日期范围。
-7. `total` 使用相同条件的分组子查询计算，保证 `total` 与 `items` 口径一致。
-8. 列表查询只执行读取和聚合，不更新 `logs`、`quota_data` 或 `users`。
+7. `total`、金额合计和 `items` 在同一条 SQL 中读取，避免两次查询之间新增消费导致同一次响应合计与明细不一致；超出范围的空页仍返回全部筛选结果合计。
+8. `total_quota` 与 `total_amount_usd` 汇总当前全部筛选结果，不受 `p`、`page_size` 影响。
+9. 列表查询只执行读取和聚合，不更新 `logs`、`quota_data` 或 `users`。
+10. 汇总区间与原始日志区间互斥并在最外层合并，归档前、回填中和回填后的结果应保持一致。
 
 ## 5 日志筛选选项接口
 
@@ -129,6 +135,8 @@ GET /api/reconciliation/options/users?keyword=ali&p=1&page_size=20
 ```
 
 接口固定只读查询 `LogTypeConsume = 2` 的消费日志，按 `user_id` 去重，并返回日志中的非空账号快照。用户已从当前用户表删除或改名时，历史消费用户仍可作为筛选项。
+
+无关键词时可复用日汇总中的用户名；带关键词时从保留的原始消费日志检索，确保历史名称在归档前后均可搜到。该检索不会只匹配日汇总中保留的单个名称。
 
 | 参数 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
@@ -207,7 +215,7 @@ GET /api/reconciliation/export?start_date=2026-08-10&end_date=2026-09-08&user_id
 | 工作表 | 工作表名为“对账单”，列为“用户、时间、模型、费用”。 |
 | 费用单元格 | 写入数值，应用千分位和两位小数格式，币种与当前账单货币配置一致。 |
 | 排序 | 与明细接口相同；导出全部聚合行，不受页面分页影响。 |
-| 大数据量 | 使用流式写入，最大导出 100000 行，请求超时 2 分钟；超过上限时明确报错，不得静默截断。 |
+| 大数据量 | 使用流式写入，最大导出 100000 行，请求超时暂设 300 秒；超过上限时明确报错，不得静默截断。 |
 
 ### 6.3 空数据响应
 
@@ -242,7 +250,7 @@ GET /api/reconciliation/export?start_date=2026-08-10&end_date=2026-09-08&user_id
 - 新增查询必须兼容 SQLite、MySQL 5.7.8 及以上、PostgreSQL 9.6 及以上。
 - 数据库日期表达式集中封装在新增模型文件中，不修改原有统计实现。
 - 接口不得返回日志 `content`、IP、令牌名、请求编号和渠道信息。
-- 在不新增索引的约束下，使用日期范围、导出行数和超时限制控制查询成本。
+- 使用日期范围、导出行数和 300 秒临时超时控制回填期间的查询成本；历史逐日汇总完成后查询优先使用紧凑的日汇总数据。
 
 ## 9 验收清单
 
@@ -256,4 +264,5 @@ GET /api/reconciliation/export?start_date=2026-08-10&end_date=2026-09-08&user_id
 - [ ] 非管理员无法调用新增对账接口。
 - [ ] 原有统计接口的请求、响应和结果保持不变。
 - [ ] SQLite、MySQL、PostgreSQL 使用同一组测试数据得到相同结果。
+- [ ] 归档区间与原始日志区间合并后没有重复或遗漏；日汇总重试不会叠加。
 - [ ] 导出文件名、列顺序、数值格式和空数据行为符合约定。

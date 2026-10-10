@@ -47,6 +47,8 @@ export interface ReconciliationBillsResponse {
     page: number
     page_size: number
     total: number
+    total_quota: number
+    total_amount_usd: number
     items: ReconciliationBill[]
   }
 }

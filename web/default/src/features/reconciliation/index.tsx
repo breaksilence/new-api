@@ -155,6 +155,7 @@ export function Reconciliation() {
             onReset={resetFilters}
           />
           <ReconciliationTable
+            key={JSON.stringify(filters)}
             params={{ ...filters, page, pageSize }}
             onPaginationChange={updatePagination}
           />

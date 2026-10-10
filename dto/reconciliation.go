@@ -20,10 +20,12 @@ type ReconciliationBill struct {
 }
 
 type ReconciliationBillsPage struct {
-	Page     int                  `json:"page"`
-	PageSize int                  `json:"page_size"`
-	Total    int64                `json:"total"`
-	Items    []ReconciliationBill `json:"items"`
+	Page           int                  `json:"page"`
+	PageSize       int                  `json:"page_size"`
+	Total          int64                `json:"total"`
+	TotalQuota     int64                `json:"total_quota"`
+	TotalAmountUSD float64              `json:"total_amount_usd"`
+	Items          []ReconciliationBill `json:"items"`
 }
 
 type ReconciliationUserOption struct {

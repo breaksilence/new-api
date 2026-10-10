@@ -50,11 +50,13 @@ func BuildReconciliationFilter(
 		return dto.ReconciliationFilter{}, ErrReconciliationInvalidUserID
 	}
 
-	start, err := time.ParseInLocation(time.DateOnly, startDate, time.Local)
+	// Validate civil dates in UTC before resolving their local day boundaries.
+	// ParseInLocation can silently shift nonexistent midnight to the prior day.
+	start, err := time.Parse(time.DateOnly, startDate)
 	if err != nil {
 		return dto.ReconciliationFilter{}, ErrReconciliationDateFormat
 	}
-	end, err := time.ParseInLocation(time.DateOnly, endDate, time.Local)
+	end, err := time.Parse(time.DateOnly, endDate)
 	if err != nil {
 		return dto.ReconciliationFilter{}, ErrReconciliationDateFormat
 	}
@@ -66,8 +68,8 @@ func BuildReconciliationFilter(
 	}
 
 	return dto.ReconciliationFilter{
-		StartTimestamp: start.Unix(),
-		EndTimestamp:   end.AddDate(0, 0, 1).Unix(),
+		StartTimestamp: common.ReconciliationDateStart(start.Year(), start.Month(), start.Day(), time.Local).Unix(),
+		EndTimestamp:   common.ReconciliationDateStart(end.Year(), end.Month(), end.Day()+1, time.Local).Unix(),
 		UserID:         userID,
 		ModelName:      strings.TrimSpace(modelName),
 		Granularity:    granularity,
@@ -87,11 +89,7 @@ func GetReconciliationBillsPage(
 		return dto.ReconciliationBillsPage{}, ErrReconciliationInvalidPageSize
 	}
 
-	total, err := model.CountReconciliationBills(ctx, filter)
-	if err != nil {
-		return dto.ReconciliationBillsPage{}, err
-	}
-	items, err := model.GetReconciliationBills(ctx, filter, (page-1)*pageSize, pageSize)
+	items, total, totalQuota, err := model.GetReconciliationBillsPage(ctx, filter, (page-1)*pageSize, pageSize)
 	if err != nil {
 		return dto.ReconciliationBillsPage{}, err
 	}
@@ -100,10 +98,12 @@ func GetReconciliationBillsPage(
 	}
 
 	return dto.ReconciliationBillsPage{
-		Page:     page,
-		PageSize: pageSize,
-		Total:    total,
-		Items:    items,
+		Page:           page,
+		PageSize:       pageSize,
+		Total:          total,
+		TotalQuota:     totalQuota,
+		TotalAmountUSD: float64(totalQuota) / common.QuotaPerUnit,
+		Items:          items,
 	}, nil
 }
 
