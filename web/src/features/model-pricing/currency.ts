@@ -45,6 +45,10 @@ export function getSitePricingCurrency(
       exchangeRate: config.customCurrencyExchangeRate,
     }
   }
+  if (config.quotaDisplayType === 'USD') {
+    // Preserve the site's CNY display convention without changing stored prices.
+    return { label: 'CNY', symbol: '¥', exchangeRate: 1 }
+  }
   return null
 }
 

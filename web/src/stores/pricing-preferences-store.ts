@@ -29,7 +29,7 @@ type PricingPreferences = {
 export const usePricingPreferencesStore = create<PricingPreferences>()(
   persist(
     (set) => ({
-      currency: 'USD',
+      currency: 'site',
       setCurrency: (currency) => set({ currency }),
     }),
     {

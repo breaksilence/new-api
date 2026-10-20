@@ -320,6 +320,7 @@ func TestUserAuthAppliesAccessTokenRouteRules(t *testing.T) {
 	require.NoError(t, model.DB.Model(admin).Update("role", common.RoleAdminUser).Error)
 	profile, _ := createMiddlewareScopedToken(t, admin.Id, 0, "profile:read")
 	channel, _ := createMiddlewareScopedToken(t, admin.Id, time.Now().Unix()+3600, "channel:read")
+	logReader, _ := createMiddlewareScopedToken(t, admin.Id, time.Now().Unix()+3600, "log:read")
 	expired, _ := createMiddlewareScopedToken(t, admin.Id, time.Now().Unix()-1, "profile:read")
 
 	ok := func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"id": c.GetInt("id")}) }
@@ -329,6 +330,9 @@ func TestUserAuthAppliesAccessTokenRouteRules(t *testing.T) {
 	router.GET("/api/undeclared", UserAuth(), ok)
 	router.GET("/api/channel/", AdminAuth(), RequirePermission(authz.ChannelRead), ok)
 	router.GET("/api/pricing", TryUserAuth(), ok)
+	for _, path := range []string{"/api/reconciliation/bills", "/api/reconciliation/options/users", "/api/reconciliation/options/models", "/api/reconciliation/export"} {
+		router.GET(path, AdminAuth(), ok)
+	}
 
 	for _, test := range []struct {
 		name, path, token, code, reason string
@@ -343,6 +347,11 @@ func TestUserAuthAppliesAccessTokenRouteRules(t *testing.T) {
 		{name: "expired token", path: "/api/user/self", token: expired, status: http.StatusUnauthorized, code: "ACCESS_TOKEN_EXPIRED", reason: "expired"},
 		{name: "legacy token before the deadline", path: "/api/user/self", token: legacy, status: http.StatusOK},
 		{name: "legacy token on a session route", path: "/api/user/access_tokens", token: legacy, status: http.StatusForbidden, code: "AUTH_SESSION_REQUIRED", reason: "session_required"},
+		{name: "reconciliation query with log scope", path: "/api/reconciliation/bills", token: logReader, status: http.StatusOK},
+		{name: "reconciliation users with log scope", path: "/api/reconciliation/options/users", token: logReader, status: http.StatusOK},
+		{name: "reconciliation models with log scope", path: "/api/reconciliation/options/models", token: logReader, status: http.StatusOK},
+		{name: "reconciliation export with log scope", path: "/api/reconciliation/export", token: logReader, status: http.StatusOK},
+		{name: "reconciliation missing log scope", path: "/api/reconciliation/bills", token: profile, status: http.StatusForbidden, code: "ACCESS_TOKEN_SCOPE_DENIED", reason: "scope_denied"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			response := middlewareBearerRequest(router, test.path, test.token)
@@ -380,6 +389,9 @@ func TestUserAuthAppliesAccessTokenRouteRules(t *testing.T) {
 	assert.Contains(t, response.Body.String(), `"code":"AUTH_USER_DISABLED"`)
 	require.NoError(t, model.DB.Model(admin).Update("status", common.UserStatusEnabled).Error)
 	assert.Equal(t, http.StatusOK, middlewareBearerRequest(router, "/api/user/self", profile).Code, "disabling a user keeps the token")
+	require.NoError(t, model.DB.Model(admin).Update("role", common.RoleCommonUser).Error)
+	assert.Equal(t, http.StatusForbidden, middlewareBearerRequest(router, "/api/reconciliation/bills", logReader).Code, "a log scope cannot bypass the administrator role")
+	require.NoError(t, model.DB.Model(admin).Update("role", common.RoleAdminUser).Error)
 
 	require.NoError(t, model.DB.Model(&model.Option{}).Where(&model.Option{Key: "LegacyAccessTokenRetireAt"}).Update("value", fmt.Sprint(time.Now().Unix()-1)).Error)
 	require.NoError(t, model.EnsureLegacyAccessTokenRetireAt(time.Now().Unix()))

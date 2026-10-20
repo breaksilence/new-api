@@ -249,6 +249,12 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"GET /api/data/flow":                        accessTokenScopeRule("log:read"),
 	"GET /api/data/flow/self":                   accessTokenScopeRule("usage:read"),
 
+	// Reconciliation is a read-only view of administrator usage logs.
+	"GET /api/reconciliation/bills":          accessTokenScopeRule("log:read"),
+	"GET /api/reconciliation/options/users":  accessTokenScopeRule("log:read"),
+	"GET /api/reconciliation/options/models": accessTokenScopeRule("log:read"),
+	"GET /api/reconciliation/export":         accessTokenScopeRule("log:read"),
+
 	// router/api-router.go: /api/group, /api/prefill_group
 	"GET /api/group/":               accessTokenScopeRule("group:read"),
 	"GET /api/prefill_group/":       accessTokenScopeRule("group:read"),

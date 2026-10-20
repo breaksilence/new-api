@@ -398,6 +398,11 @@ func migrateDB() error {
 			return err
 		}
 	}
+	if os.Getenv("LOG_SQL_DSN") == "" {
+		if err := migrateReconciliationTables(DB); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -408,7 +413,10 @@ func migrateLOGDB() error {
 	if common.UsingLogDatabase(common.DatabaseTypeClickHouse) {
 		return migrateClickHouseLogDB()
 	}
-	return LOG_DB.AutoMigrate(&Log{})
+	if err := LOG_DB.AutoMigrate(&Log{}); err != nil {
+		return err
+	}
+	return migrateReconciliationTables(LOG_DB)
 }
 
 func migrateClickHouseLogDB() error {

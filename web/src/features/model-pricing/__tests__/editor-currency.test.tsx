@@ -742,7 +742,7 @@ it.each([0, -1, Infinity, Number.NaN, undefined])(
   }
 )
 
-it.each(['USD', 'TOKENS'] as const)(
+it.each(['TOKENS'] as const)(
   'offers only USD when the site uses %s',
   async (type) => {
     usePricingPreferencesStore.setState({ currency: 'site' })
@@ -759,6 +759,25 @@ it.each(['USD', 'TOKENS'] as const)(
     ).toBeVisible()
   }
 )
+
+it('keeps CNY site display at rate one while preserving explicit USD and stored prices', async () => {
+  usePricingPreferencesStore.setState({ currency: 'site' })
+  useSystemConfigStore.getState().setConfig({
+    currency: {
+      ...DEFAULT_CURRENCY_CONFIG,
+      quotaDisplayType: 'USD',
+      usdExchangeRate: 7,
+    },
+  })
+  const editor = renderEditor({ price: '3', billingMode: 'per-request' })
+  expect(screen.getByRole('textbox', { name: 'Fixed price' })).toHaveValue('3')
+  await selectCurrency('US dollar (USD)')
+  expect(screen.getByRole('textbox', { name: 'Fixed price' })).toHaveValue('3')
+  await selectCurrency('Site currency (CNY)')
+  expect(screen.getByRole('textbox', { name: 'Fixed price' })).toHaveValue('3')
+  const result = await commit(editor.ref)
+  expect(result).toMatchObject({ price: '3' })
+})
 
 it('blocks a non-finite conversion and allows saving after the amount is corrected', async () => {
   useSystemConfigStore.getState().setConfig({

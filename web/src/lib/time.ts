@@ -19,7 +19,11 @@ For commercial licensing, please contact support@quantumnous.com
 /**
  * Time utility functions for consistent time handling across the application
  */
+import isoWeek from 'dayjs/plugin/isoWeek'
+
 import dayjs from '@/lib/dayjs'
+
+dayjs.extend(isoWeek)
 
 /**
  * Time granularity type
@@ -169,8 +173,10 @@ export function formatChartTime(
   if (granularity === 'hour') {
     result += ` ${d.format('HH')}:00`
   } else if (granularity === 'week') {
-    const weekEnd = d.add(6, 'day')
-    result += ` - ${weekEnd.format('MM-DD')}`
+    // Normalize to Monday so all days in the same ISO week share one key
+    const monday = d.startOf('isoWeek')
+    const sunday = monday.add(6, 'day')
+    result = `${monday.format('MM-DD')} - ${sunday.format('MM-DD')}`
   }
 
   return result

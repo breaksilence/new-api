@@ -90,6 +90,8 @@ export interface CurrencyFormatOptions {
   digitsLarge?: number
   /** Fraction digits to use when |value| < 1 */
   digitsSmall?: number
+  /** Minimum fraction digits to keep in currency displays */
+  minimumFractionDigits?: number
   /** Whether to abbreviate thousands with k suffix */
   abbreviate?: boolean
   /** Minimal absolute value to display when rounding would produce zero */
@@ -133,6 +135,7 @@ type DisplayMeta =
 const DEFAULT_FORMAT_OPTIONS: ResolvedCurrencyFormatOptions = {
   digitsLarge: 2,
   digitsSmall: 4,
+  minimumFractionDigits: 0,
   abbreviate: true,
   minimumNonZero: 0,
   compact: false,
@@ -208,8 +211,8 @@ function getDisplayMeta(config: CurrencyConfig): DisplayMeta {
     default:
       return {
         kind: 'currency',
-        symbol: '$',
-        currencyCode: 'USD',
+        symbol: '¥', // 美元到人民币UI展示调整
+        currencyCode: 'CNY', // 美元到人民币UI展示调整
         exchangeRate: 1,
       }
   }
@@ -220,8 +223,8 @@ function getBillingDisplayMeta(config: CurrencyConfig): DisplayMeta {
   if (meta.kind === 'tokens') {
     return {
       kind: 'currency',
-      symbol: '$',
-      currencyCode: 'USD',
+      symbol: '¥', // 美元到人民币UI展示调整
+      currencyCode: 'CNY', // 美元到人民币UI展示调整
       exchangeRate: 1,
     }
   }
@@ -235,6 +238,9 @@ function mergeOptions(
   return {
     digitsLarge: options.digitsLarge ?? DEFAULT_FORMAT_OPTIONS.digitsLarge,
     digitsSmall: options.digitsSmall ?? DEFAULT_FORMAT_OPTIONS.digitsSmall,
+    minimumFractionDigits:
+      options.minimumFractionDigits ??
+      DEFAULT_FORMAT_OPTIONS.minimumFractionDigits,
     abbreviate: options.abbreviate ?? DEFAULT_FORMAT_OPTIONS.abbreviate,
     minimumNonZero:
       options.minimumNonZero ?? DEFAULT_FORMAT_OPTIONS.minimumNonZero,
@@ -323,12 +329,19 @@ function formatCurrencyValue(
     options.digitsSmall
   )
   const adjustedValue = adjustForMinimum(value, digits, options.minimumNonZero)
+  const minimumFractionDigits = Math.max(
+    0,
+    Math.min(options.minimumFractionDigits, digits)
+  )
 
   if (meta.kind === 'currency') {
     if (!options.showSymbol) {
       return new Intl.NumberFormat(options.locale, {
         notation: options.compact ? 'compact' : 'standard',
-        minimumFractionDigits: 0,
+        minimumFractionDigits: Math.min(
+          minimumFractionDigits,
+          options.compact ? 1 : digits
+        ),
         maximumFractionDigits: options.compact ? 1 : digits,
       }).format(adjustedValue)
     }
@@ -338,7 +351,10 @@ function formatCurrencyValue(
       currency: meta.currencyCode,
       currencyDisplay: 'narrowSymbol',
       notation: options.compact ? 'compact' : 'standard',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: Math.min(
+        minimumFractionDigits,
+        options.compact ? 1 : digits
+      ),
       maximumFractionDigits: options.compact ? 1 : digits,
     }).format(adjustedValue)
     return formatted
@@ -346,7 +362,10 @@ function formatCurrencyValue(
 
   const decimal = new Intl.NumberFormat(options.locale, {
     notation: options.compact ? 'compact' : 'standard',
-    minimumFractionDigits: 0,
+    minimumFractionDigits: Math.min(
+      minimumFractionDigits,
+      options.compact ? 1 : digits
+    ),
     maximumFractionDigits: options.compact ? 1 : digits,
   }).format(adjustedValue)
 
@@ -557,7 +576,7 @@ export function getCurrencyLabel(): string {
       return meta.kind === 'custom' ? meta.symbol : 'Custom'
     case 'USD':
     default:
-      return 'USD'
+      return 'CNY'
   }
 }
 

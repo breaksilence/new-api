@@ -64,14 +64,14 @@ const cases: Array<{
     start: '2025-11-29T12:00:00',
     interval: 604800,
     labels: [
-      '11-29 - 12-05',
-      '12-06 - 12-12',
-      '12-13 - 12-19',
-      '12-20 - 12-26',
-      '12-27 - 01-02',
-      '01-03 - 01-09',
-      '01-10 - 01-16',
-      '01-17 - 01-23',
+      '11-24 - 11-30',
+      '12-01 - 12-07',
+      '12-08 - 12-14',
+      '12-15 - 12-21',
+      '12-22 - 12-28',
+      '12-29 - 01-04',
+      '01-05 - 01-11',
+      '01-12 - 01-18',
     ],
   },
 ]
@@ -138,9 +138,17 @@ describe.each(cases)('dashboard $granularity chart chronology', (scenario) => {
     expect(data).toEqual(original)
   })
 
-  test('keeps the existing seven padded model buckets in chronological order', () => {
+  test('pads the selected interval in chronological order even with one populated bucket', () => {
     const data = [unorderedUsage(scenario.start, scenario.interval)[0]]
-    const result = processChartData(data, scenario.granularity)
+    const start = new Date(scenario.start).getTime() / 1000
+    const result = processChartData(
+      data,
+      scenario.granularity,
+      undefined,
+      undefined,
+      start + scenario.interval,
+      start + 7 * scenario.interval
+    )
 
     for (const key of ['spec_line', 'spec_area', 'spec_model_line'] as const) {
       const values: Array<{ Time: string; rawQuota: number; Count: number }> =

@@ -18,12 +18,12 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { dataScheme as vchartDefaultDataScheme } from '@visactor/vchart/esm/theme/color-scheme/builtin/default'
 
-import { MAX_CHART_TREND_POINTS } from '@/features/dashboard/constants'
 import type {
   QuotaDataItem,
   ProcessedChartData,
   ProcessedUserChartData,
 } from '@/features/dashboard/types'
+import { getUserAvatarColor } from '@/lib/avatar'
 import { getCurrencyDisplay } from '@/lib/currency'
 import { formatChartTime, type TimeGranularity } from '@/lib/time'
 
@@ -55,7 +55,7 @@ function renderQuotaCompat(rawQuota: number, digits = 4): string {
   if (meta.kind === 'tokens') return rawQuota.toLocaleString()
   const usd = rawQuota / config.quotaPerUnit
   const rate = 'exchangeRate' in meta ? meta.exchangeRate : 1
-  const symbol = 'symbol' in meta ? meta.symbol : '$'
+  const symbol = 'symbol' in meta ? meta.symbol : '¥' // 美元到人民币UI展示调整
   const value = usd * rate
   const fixed = value.toFixed(digits)
   if (Number.parseFloat(fixed) === 0 && rawQuota > 0 && value > 0) {
@@ -71,7 +71,9 @@ export function processChartData(
   data: QuotaDataItem[],
   timeGranularity: TimeGranularity = 'day',
   t?: TFunction,
-  chartCornerRadius?: number
+  chartCornerRadius?: number,
+  startTimestamp?: number,
+  endTimestamp?: number
 ): ProcessedChartData {
   const tt: TFunction = t ?? ((x) => x)
   const otherLabel = tt('Other')
@@ -280,28 +282,26 @@ export function processChartData(
     range: modelColorRange,
   }
 
-  // Pad time points if too few (default 7 points)
-  const MAX_TREND_POINTS = MAX_CHART_TREND_POINTS
-  const fillTimePoints = (times: string[]) => {
-    if (times.length >= MAX_TREND_POINTS) return times
-    const lastTime = Math.max(
-      ...data.map((item) => Number(item.created_at) || 0)
-    )
-    let intervalSec = 3600
-    if (timeGranularity === 'week') {
-      intervalSec = 604800
-    } else if (timeGranularity === 'day') {
-      intervalSec = 86400
-    }
-    const padded = Array.from({ length: MAX_TREND_POINTS }, (_, i) =>
-      formatChartTime(
-        lastTime - (MAX_TREND_POINTS - 1 - i) * intervalSec,
-        timeGranularity
-      )
-    )
-    return padded
+  // Generate time points spanning the query interval
+  const getIntervalSec = () => {
+    if (timeGranularity === 'week') return 604800
+    if (timeGranularity === 'day') return 86400
+    return 3600
   }
-  const chartTimes = fillTimePoints(sortedTimes)
+  const intervalSec = getIntervalSec()
+  const canFillFromRange =
+    startTimestamp != null &&
+    endTimestamp != null &&
+    startTimestamp < endTimestamp
+  const chartTimes: string[] = canFillFromRange
+    ? (() => {
+        const pts: string[] = []
+        for (let t = startTimestamp; t <= endTimestamp; t += intervalSec) {
+          pts.push(formatChartTime(t, timeGranularity))
+        }
+        return pts
+      })()
+    : sortedTimes
 
   const totalTimes = [...modelTotalsMap.values()].reduce(
     (sum, x) => sum + (Number(x.count) || 0),
@@ -773,13 +773,10 @@ export function processUserChartData(
     Usage: Number((quota / quotaPerUnit).toFixed(4)),
   }))
 
-  const userColorMap = topUsers.reduce<Record<string, string>>(
-    (acc, user, i) => {
-      acc[user] = USER_COLORS[i % USER_COLORS.length]
-      return acc
-    },
-    {}
-  )
+  const userColorMap = topUsers.reduce<Record<string, string>>((acc, user) => {
+    acc[user] = getUserAvatarColor(user)
+    return acc
+  }, {})
 
   const timeUserMap = new Map<string, Map<string, number>>()
   const timeTimestamps = new Map<string, number>()

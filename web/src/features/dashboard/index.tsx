@@ -32,6 +32,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { ROLE } from '@/lib/roles'
+import { dateToUnixTimestamp } from '@/lib/time'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -374,6 +375,16 @@ export function Dashboard() {
                     timeGranularity={
                       modelFilters.time_granularity || DEFAULT_TIME_GRANULARITY
                     }
+                    startTimestamp={
+                      modelFilters.start_timestamp
+                        ? dateToUnixTimestamp(modelFilters.start_timestamp)
+                        : undefined
+                    }
+                    endTimestamp={
+                      modelFilters.end_timestamp
+                        ? dateToUnixTimestamp(modelFilters.end_timestamp)
+                        : undefined
+                    }
                   />
                 </Suspense>
               </FadeIn>
@@ -385,6 +396,16 @@ export function Dashboard() {
                     defaultChartTab={chartPreferences.modelAnalyticsChart}
                     timeGranularity={
                       modelFilters.time_granularity || DEFAULT_TIME_GRANULARITY
+                    }
+                    startTimestamp={
+                      modelFilters.start_timestamp
+                        ? dateToUnixTimestamp(modelFilters.start_timestamp)
+                        : undefined
+                    }
+                    endTimestamp={
+                      modelFilters.end_timestamp
+                        ? dateToUnixTimestamp(modelFilters.end_timestamp)
+                        : undefined
                     }
                   />
                 </Suspense>

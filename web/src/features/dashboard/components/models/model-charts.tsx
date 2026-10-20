@@ -54,6 +54,8 @@ interface ModelChartsProps {
   loading?: boolean
   timeGranularity?: TimeGranularity
   defaultChartTab?: ModelAnalyticsChartTab
+  startTimestamp?: number
+  endTimestamp?: number
 }
 
 export function ModelCharts(props: ModelChartsProps) {
@@ -102,9 +104,19 @@ export function ModelCharts(props: ModelChartsProps) {
         props.loading ? [] : props.data,
         timeGranularity,
         t,
-        chartRadius
+        chartRadius,
+        props.startTimestamp,
+        props.endTimestamp
       ),
-    [props.data, props.loading, timeGranularity, t, chartRadius]
+    [
+      props.data,
+      props.loading,
+      timeGranularity,
+      t,
+      chartRadius,
+      props.startTimestamp,
+      props.endTimestamp,
+    ]
   )
 
   const spec = chartData[CHART_SPEC_KEYS[activeTab]]
