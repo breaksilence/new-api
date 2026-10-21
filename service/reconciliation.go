@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
@@ -18,16 +17,16 @@ const (
 )
 
 var (
-	ErrReconciliationDateRequired    = errors.New("开始日期和结束日期不能为空")
-	ErrReconciliationDateFormat      = errors.New("日期格式应为 YYYY-MM-DD")
-	ErrReconciliationDateOrder       = errors.New("开始时间需早于结束时间")
-	ErrReconciliationDateRange       = errors.New("查询日期范围不能超过 366 天")
-	ErrReconciliationGranularity     = errors.New("时间粒度仅支持 day 或 month")
-	ErrReconciliationNoExportData    = errors.New("当前筛选条件下没有可导出的数据")
-	ErrReconciliationExportRowsLimit = errors.New("导出结果超过 100000 行，请缩小筛选范围后重试")
-	ErrReconciliationInvalidUserID   = errors.New("用户编号必须为正整数")
-	ErrReconciliationInvalidPage     = errors.New("页码必须为正整数")
-	ErrReconciliationInvalidPageSize = errors.New("每页条数必须为 1 到 100 之间的整数")
+	ErrReconciliationDateRequired    = common.NewMessage("Start and end dates are required")
+	ErrReconciliationDateFormat      = common.NewMessage("Dates must use YYYY-MM-DD format")
+	ErrReconciliationDateOrder       = common.NewMessage("Start date must not be later than end date")
+	ErrReconciliationDateRange       = common.NewMessage("The date range cannot exceed 366 days")
+	ErrReconciliationGranularity     = common.NewMessage("Time granularity must be day or month")
+	ErrReconciliationNoExportData    = common.NewMessage("No data to export for the current filters")
+	ErrReconciliationExportRowsLimit = common.NewMessage("Export exceeds 100000 rows. Narrow the filters and try again.")
+	ErrReconciliationInvalidUserID   = common.NewMessage("User ID must be a non-negative integer")
+	ErrReconciliationInvalidPage     = common.NewMessage("Page number must be a positive integer")
+	ErrReconciliationInvalidPageSize = common.NewMessage("Page size must be an integer between 1 and 100")
 )
 
 func BuildReconciliationFilter(

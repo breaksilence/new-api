@@ -64,7 +64,7 @@ func GetReconciliationBills(c *gin.Context) {
 	result, err := service.GetReconciliationBillsPage(ctx, filter, page, pageSize)
 	if err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("reconciliation list query failed: %v", err))
-		common.ApiErrorMsg(c, "对账单查询失败，请稍后重试")
+		common.ApiErrorT(c, "Failed to query reconciliation bills. Please try again later.")
 		return
 	}
 	common.ApiSuccess(c, result)
@@ -92,7 +92,7 @@ func GetReconciliationUserOptions(c *gin.Context) {
 	result, err := service.GetReconciliationUserOptionsPage(ctx, c.Query("keyword"), userID, page, pageSize)
 	if err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("reconciliation user options query failed: %v", err))
-		common.ApiErrorMsg(c, "对账单用户选项查询失败，请稍后重试")
+		common.ApiErrorT(c, "Failed to query reconciliation users. Please try again later.")
 		return
 	}
 	common.ApiSuccess(c, result)
@@ -115,7 +115,7 @@ func GetReconciliationModelOptions(c *gin.Context) {
 	result, err := service.GetReconciliationModelOptionsPage(ctx, c.Query("keyword"), page, pageSize)
 	if err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("reconciliation model options query failed: %v", err))
-		common.ApiErrorMsg(c, "对账单模型选项查询失败，请稍后重试")
+		common.ApiErrorT(c, "Failed to query reconciliation models. Please try again later.")
 		return
 	}
 	common.ApiSuccess(c, result)
@@ -133,7 +133,7 @@ func ExportReconciliationBills(c *gin.Context) {
 	if err != nil {
 		if err != service.ErrReconciliationNoExportData && err != service.ErrReconciliationExportRowsLimit {
 			logger.LogError(c.Request.Context(), fmt.Sprintf("reconciliation export failed: %v", err))
-			common.ApiErrorMsg(c, "对账单导出失败，请稍后重试")
+			common.ApiErrorT(c, "Failed to export reconciliation bills. Please try again later.")
 			return
 		}
 		common.ApiError(c, err)

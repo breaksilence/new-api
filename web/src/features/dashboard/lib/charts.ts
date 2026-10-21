@@ -25,6 +25,7 @@ import type {
 } from '@/features/dashboard/types'
 import { getUserAvatarColor } from '@/lib/avatar'
 import { getCurrencyDisplay } from '@/lib/currency'
+import dayjs from '@/lib/dayjs'
 import { formatChartTime, type TimeGranularity } from '@/lib/time'
 
 type TFunction = (key: string) => string
@@ -282,24 +283,27 @@ export function processChartData(
     range: modelColorRange,
   }
 
-  // Generate time points spanning the query interval
-  const getIntervalSec = () => {
-    if (timeGranularity === 'week') return 604800
-    if (timeGranularity === 'day') return 86400
-    return 3600
-  }
-  const intervalSec = getIntervalSec()
+  // Fill natural calendar buckets, including partial buckets at either end.
+  // Calendar increments preserve local midnight across daylight-saving changes.
   const canFillFromRange =
     startTimestamp != null &&
     endTimestamp != null &&
     startTimestamp < endTimestamp
   const chartTimes: string[] = canFillFromRange
     ? (() => {
-        const pts: string[] = []
-        for (let t = startTimestamp; t <= endTimestamp; t += intervalSec) {
-          pts.push(formatChartTime(t, timeGranularity))
+        const pts = new Set<string>()
+        const first = dayjs(startTimestamp * 1000).startOf(
+          timeGranularity === 'week' ? 'isoWeek' : timeGranularity
+        )
+        for (
+          let bucket = first;
+          bucket.unix() <= endTimestamp;
+          bucket = bucket.add(1, timeGranularity)
+        ) {
+          // Repeated local hours during DST share an existing aggregate key.
+          pts.add(formatChartTime(bucket.unix(), timeGranularity))
         }
-        return pts
+        return [...pts]
       })()
     : sortedTimes
 

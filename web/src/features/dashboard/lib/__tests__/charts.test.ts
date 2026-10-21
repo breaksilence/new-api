@@ -162,3 +162,131 @@ describe.each(cases)('dashboard $granularity chart chronology', (scenario) => {
     }
   })
 })
+
+describe('dashboard partial time buckets', () => {
+  test.each([
+    {
+      granularity: 'hour' as const,
+      start: '2026-09-01T15:45:00',
+      end: '2026-09-01T16:10:00',
+      lastRecord: '2026-09-01T16:05:00',
+      labels: ['09-01 15:00', '09-01 16:00'],
+    },
+    {
+      granularity: 'day' as const,
+      start: '2026-09-01T15:00:00',
+      end: '2026-09-02T10:00:00',
+      lastRecord: '2026-09-02T09:00:00',
+      labels: ['09-01', '09-02'],
+    },
+    {
+      granularity: 'week' as const,
+      start: '2026-08-29T10:00:00',
+      end: '2026-09-28T10:00:00',
+      lastRecord: '2026-09-28T09:00:00',
+      labels: [
+        '08-24 - 08-30',
+        '08-31 - 09-06',
+        '09-07 - 09-13',
+        '09-14 - 09-20',
+        '09-21 - 09-27',
+        '09-28 - 10-04',
+      ],
+    },
+  ])(
+    'includes the final partial $granularity bucket in every model chart',
+    (scenario) => {
+      const result = processChartData(
+        [
+          {
+            created_at: new Date(scenario.lastRecord).getTime() / 1000,
+            model_name: 'model-a',
+            username: 'alice',
+            quota: 1000000,
+            count: 2,
+          },
+        ],
+        scenario.granularity,
+        undefined,
+        undefined,
+        new Date(scenario.start).getTime() / 1000,
+        new Date(scenario.end).getTime() / 1000
+      )
+
+      for (const key of [
+        'spec_line',
+        'spec_area',
+        'spec_model_line',
+      ] as const) {
+        const values: Array<{ Time: string; rawQuota: number; Count: number }> =
+          result[key].data[0].values
+        expect(values.map((row) => row.Time)).toEqual(scenario.labels)
+        expect(values.at(-1)).toMatchObject(
+          key === 'spec_model_line' ? { Count: 2 } : { rawQuota: 1000000 }
+        )
+      }
+      expect(result.spec_pie.data[0].values).toEqual([
+        { type: 'model-a', value: 2 },
+      ])
+    }
+  )
+
+  // Also run this suite with TZ=America/New_York to exercise DST boundaries.
+  test.each([
+    ['2026-03-07T15:00:00', '2026-03-09T00:30:00', ['03-07', '03-08', '03-09']],
+    ['2026-10-31T15:00:00', '2026-11-02T00:30:00', ['10-31', '11-01', '11-02']],
+  ])(
+    'uses calendar days across clock changes from %s',
+    (start, end, labels) => {
+      const timestamp = new Date(end).getTime() / 1000
+      const result = processChartData(
+        [
+          {
+            created_at: timestamp,
+            model_name: 'model-a',
+            quota: 500000,
+            count: 1,
+          },
+        ],
+        'day',
+        undefined,
+        undefined,
+        new Date(start).getTime() / 1000,
+        timestamp
+      )
+      expect(
+        result.spec_line.data[0].values.map((row: { Time: string }) => row.Time)
+      ).toEqual(labels)
+      expect(result.spec_line.data[0].values.at(-1)).toMatchObject({
+        rawQuota: 500000,
+      })
+    }
+  )
+
+  test('does not duplicate the aggregated local hour when clocks move back', () => {
+    const result = processChartData(
+      [
+        {
+          created_at: new Date('2026-11-01T01:30:00').getTime() / 1000,
+          model_name: 'model-a',
+          quota: 500000,
+          count: 1,
+        },
+      ],
+      'hour',
+      undefined,
+      undefined,
+      new Date('2026-11-01T00:00:00').getTime() / 1000,
+      new Date('2026-11-01T03:00:00').getTime() / 1000
+    )
+    const values: Array<{ Time: string; Count: number }> =
+      result.spec_model_line.data[0].values
+    expect(values.map((row) => row.Time)).toEqual([
+      '11-01 00:00',
+      '11-01 01:00',
+      '11-01 02:00',
+      '11-01 03:00',
+    ])
+    expect(values.reduce((sum, row) => sum + row.Count, 0)).toBe(1)
+  })
+})
