@@ -23,11 +23,13 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import i18next from 'i18next'
 import { useState } from 'react'
 import { beforeEach, expect, test, vi } from 'vitest'
 
+import zh from '@/i18n/locales/zh.json'
 import { api } from '@/lib/api'
 
 import { SettingsPageProvider } from '../../components/settings-page-context'
@@ -87,7 +89,7 @@ test.each(['0.5', '1.5', '2.5', '0.0001'])(
     expect(input).toHaveValue(1)
     expect(
       screen.getByRole('spinbutton', {
-        name: 'Wallet pre-consume bypass threshold (USD)',
+        name: 'Wallet pre-consume bypass threshold (CNY)',
       })
     ).toHaveValue(10)
     await user.clear(input)
@@ -120,7 +122,7 @@ test.each(['0', '-0.5', ''])(
 test('zero threshold disables bypass and saves as zero', async () => {
   await renderSettings()
   const input = screen.getByRole('spinbutton', {
-    name: 'Wallet pre-consume bypass threshold (USD)',
+    name: 'Wallet pre-consume bypass threshold (CNY)',
   })
   fireEvent.change(input, { target: { value: '0' } })
   fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
@@ -137,7 +139,7 @@ test.each(['', '-1'])(
   async (value) => {
     await renderSettings()
     const input = screen.getByRole('spinbutton', {
-      name: 'Wallet pre-consume bypass threshold (USD)',
+      name: 'Wallet pre-consume bypass threshold (CNY)',
     })
     fireEvent.change(input, { target: { value } })
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
@@ -145,3 +147,32 @@ test.each(['', '-1'])(
     expect(api.put).not.toHaveBeenCalled()
   }
 )
+
+test('switching to Chinese shows the threshold in yuan and preserves the saved value', async () => {
+  await renderSettings()
+  const previousLanguage = i18next.language
+  i18next.addResourceBundle('zh', 'translation', zh.translation)
+
+  try {
+    await act(() => i18next.changeLanguage('zh'))
+    const input = screen.getByRole('spinbutton', {
+      name: '钱包免预扣门槛（元）',
+    })
+    expect(input).toHaveValue(10)
+    expect(screen.queryByText('钱包免预扣门槛（美元）')).not.toBeInTheDocument()
+
+    fireEvent.change(input, { target: { value: '10.5' } })
+    fireEvent.click(
+      screen.getByRole('button', { name: i18next.t('Save Changes') })
+    )
+    await waitFor(() =>
+      expect(api.put).toHaveBeenCalledWith('/api/option/', {
+        key: 'quota_setting.trust_quota_usd',
+        value: 10.5,
+      })
+    )
+  } finally {
+    await act(() => i18next.changeLanguage(previousLanguage))
+    i18next.removeResourceBundle('zh', 'translation')
+  }
+})

@@ -32,11 +32,20 @@ import { Input } from '@/components/ui/input'
 import { DataTableToolbar } from '../toolbar'
 
 const rows = [{ name: 'Channel', model: 'model', status: 'enabled' }]
+const columns = [
+  { accessorKey: 'name' },
+  { accessorKey: 'model' },
+  { accessorKey: 'status' },
+]
 const filters = [
   {
     columnId: 'status',
     title: 'Status',
-    options: [{ value: 'enabled', label: 'Enabled' }],
+    singleSelect: true,
+    options: [
+      { value: 'enabled', label: 'Enabled' },
+      { value: 'disabled', label: 'Disabled' },
+    ],
   },
 ]
 
@@ -46,11 +55,7 @@ function Fixture(props: { collapsibleOnMobile?: boolean }) {
   ])
   const table = useReactTable({
     data: rows,
-    columns: [
-      { accessorKey: 'name' },
-      { accessorKey: 'model' },
-      { accessorKey: 'status' },
-    ],
+    columns,
     getCoreRowModel: getCoreRowModel(),
     state: { columnFilters },
     onColumnFiltersChange: setColumnFilters,
@@ -87,6 +92,39 @@ function setMobileViewport(mobile: boolean) {
 
 afterEach(() => {
   vi.restoreAllMocks()
+})
+
+it('updates selected status immediately and clears it without remounting the toolbar', async () => {
+  const user = userEvent.setup()
+  render(<Fixture />)
+
+  await user.click(screen.getByRole('button', { name: /^Status/ }))
+  await user.click(screen.getByRole('option', { name: 'Disabled' }))
+  expect(screen.getByRole('option', { name: 'Disabled' })).toHaveAttribute(
+    'aria-checked',
+    'true'
+  )
+  expect(screen.getByRole('option', { name: 'Enabled' })).toHaveAttribute(
+    'aria-checked',
+    'false'
+  )
+  expect(screen.getByRole('button', { name: /^Status/ })).toHaveTextContent(
+    'Disabled'
+  )
+  expect(screen.getByRole('button', { name: /^Status/ })).not.toHaveTextContent(
+    'Enabled'
+  )
+
+  await user.click(screen.getByRole('option', { name: 'Disabled' }))
+  expect(screen.getByRole('button', { name: 'Status' })).toBeVisible()
+  expect(
+    screen.queryByRole('option', { name: 'Clear filters' })
+  ).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('option', { name: 'Enabled' }))
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: 'Reset' }))
+  expect(screen.getByRole('button', { name: 'Status' })).toBeVisible()
 })
 
 it('hides the mobile filter group while keeping reset and quick actions accessible', async () => {

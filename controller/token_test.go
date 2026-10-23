@@ -519,6 +519,90 @@ func TestGetTokenMasksKeyInResponse(t *testing.T) {
 	}
 }
 
+func TestSearchTokensStatusDatabaseMatrix(t *testing.T) {
+	for _, database := range []struct {
+		name, env string
+		typ       common.DatabaseType
+	}{
+		{"sqlite", "", common.DatabaseTypeSQLite},
+		{"mysql", "AUDIT_MYSQL_DSN", common.DatabaseTypeMySQL},
+		{"postgres", "AUDIT_POSTGRES_DSN", common.DatabaseTypePostgreSQL},
+	} {
+		t.Run(database.name, func(t *testing.T) {
+			dsn := os.Getenv(database.env)
+			if database.env != "" && dsn == "" {
+				t.Skip(database.env + " is not configured")
+			}
+			previousDB := model.DB
+			previousMain, previousLog := common.MainDatabaseType(), common.LogDatabaseType()
+			t.Cleanup(func() { model.DB = previousDB; common.SetDatabaseTypes(previousMain, previousLog) })
+			db, _ := newAuditTestDatabase(t, database.name, dsn)
+			model.DB = db
+			common.SetDatabaseTypes(database.typ, database.typ)
+			require.NoError(t, db.AutoMigrate(&model.Token{}))
+			versionSQL := "SELECT version()"
+			if database.name == "sqlite" {
+				versionSQL = "SELECT sqlite_version()"
+			}
+			var version string
+			require.NoError(t, db.Raw(versionSQL).Scan(&version).Error)
+			t.Logf("database version: %s", version)
+			tokens := []model.Token{
+				{UserId: 1, Name: "enabled", Key: "status-enabled-test-secret", Status: 1},
+				{UserId: 1, Name: "disabled-old", Key: "status-disabled-old-test-secret", Status: 2},
+				{UserId: 1, Name: "disabled-new", Key: "status-disabled-new-test-secret", Status: 2},
+				{UserId: 1, Name: "expired", Key: "status-expired-test-secret", Status: 3},
+				{UserId: 1, Name: "exhausted", Key: "status-exhausted-test-secret", Status: 4},
+				{UserId: 2, Name: "foreign", Key: "status-foreign-test-secret", Status: 2},
+				{UserId: 1, Name: "deleted", Key: "status-deleted-test-secret", Status: 2},
+			}
+			require.NoError(t, db.Create(&tokens).Error)
+			require.NoError(t, db.Delete(&tokens[6]).Error)
+			for _, tc := range []struct {
+				name, query string
+				total       int
+				names       []string
+			}{
+				{"unfiltered", "size=10", 5, []string{"exhausted", "expired", "disabled-new", "disabled-old", "enabled"}},
+				{"enabled", "status=1", 1, []string{"enabled"}},
+				{"disabled-first-page", "status=2&size=1&p=1&user_id=2", 2, []string{"disabled-new"}},
+				{"disabled-second-page", "status=2&size=1&p=2", 2, []string{"disabled-old"}},
+				{"expired", "status=3", 1, []string{"expired"}},
+				{"exhausted", "status=4", 1, []string{"exhausted"}},
+				{"multiple", "status=2,3", 3, []string{"expired", "disabled-new", "disabled-old"}},
+				{"combined", "status=2&keyword=disabled-old", 1, []string{"disabled-old"}},
+				{"no-match", "status=1&keyword=foreign", 0, []string{}},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					ctx, recorder := newAuthenticatedContext(t, http.MethodGet, "/api/token/search?"+tc.query, nil, 1)
+					SearchTokens(ctx)
+					response := decodeAPIResponse(t, recorder)
+					require.True(t, response.Success, response.Message)
+					var page struct {
+						Items []tokenResponseItem `json:"items"`
+						Total int                 `json:"total"`
+					}
+					require.NoError(t, common.Unmarshal(response.Data, &page))
+					assert.Equal(t, tc.total, page.Total)
+					names := make([]string, 0, len(page.Items))
+					for _, token := range page.Items {
+						names = append(names, token.Name)
+					}
+					assert.Equal(t, tc.names, names)
+					for _, token := range tokens {
+						assert.NotContains(t, recorder.Body.String(), token.Key)
+					}
+				})
+			}
+			for _, status := range []string{"0", "5", "abc", "2,", "1,2,3,4,5", "2%20OR%201=1"} {
+				ctx, recorder := newAuthenticatedContext(t, http.MethodGet, "/api/token/search?status="+status, nil, 1)
+				SearchTokens(ctx)
+				assert.False(t, decodeAPIResponse(t, recorder).Success, "status=%s", status)
+			}
+		})
+	}
+}
+
 func TestUpdateTokenMasksKeyInResponse(t *testing.T) {
 	db := setupTokenControllerTestDB(t)
 	token := seedToken(t, db, 1, "editable-token", "yzab1234cdef5678")

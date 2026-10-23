@@ -147,10 +147,28 @@ func SearchTokens(c *gin.Context) {
 	userId := c.GetInt("id")
 	keyword := c.Query("keyword")
 	token := c.Query("token")
+	statusFilter := c.Query("status")
+	var statuses []int
+	if statusFilter != "" {
+		// Four single-digit states, comma-separated. Reject malformed filters
+		// instead of accidentally returning the unfiltered list.
+		if len(statusFilter) > 7 {
+			common.ApiErrorMsg(c, "Invalid token status")
+			return
+		}
+		for value := range strings.SplitSeq(statusFilter, ",") {
+			status, err := strconv.Atoi(value)
+			if err != nil || status < common.TokenStatusEnabled || status > common.TokenStatusExhausted {
+				common.ApiErrorMsg(c, "Invalid token status")
+				return
+			}
+			statuses = append(statuses, status)
+		}
+	}
 
 	pageInfo := common.GetPageQuery(c)
 
-	tokens, total, err := model.SearchUserTokens(userId, keyword, token, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	tokens, total, err := model.SearchUserTokens(userId, keyword, token, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), statuses...)
 	if err != nil {
 		common.ApiError(c, err)
 		return

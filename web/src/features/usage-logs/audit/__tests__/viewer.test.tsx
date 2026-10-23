@@ -55,7 +55,7 @@ it.each([
       failure_reason: 'invalid_parameters',
     },
     'Adjust user quota',
-    'Requested quota: $1 · Invalid adjustment parameters',
+    'Requested quota: ¥1 · Invalid adjustment parameters',
   ],
   [
     'user.quota_add',
@@ -68,7 +68,7 @@ it.each([
       to: 1000000,
     },
     'Increase quota for user “quota-owner”',
-    'Requested quota: $1 · $1 → $2',
+    'Requested quota: ¥1 · ¥1 → ¥2',
   ],
   [
     'user.quota_subtract',
@@ -81,7 +81,7 @@ it.each([
       to: 500000,
     },
     'Decrease quota for user “quota-owner”',
-    'Requested quota: $1 · $2 → $1',
+    'Requested quota: ¥1 · ¥2 → ¥1',
   ],
   [
     'user.quota_override',
@@ -93,7 +93,7 @@ it.each([
       to: 0,
     },
     'Override quota for user “quota-owner”',
-    'Requested quota: $0 · $1 → $0',
+    'Requested quota: ¥0 · ¥1 → ¥0',
   ],
   ['token.create', { id: 11, name: '1' }, 'Create API token “1”', ''],
   [
@@ -407,7 +407,7 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
-function renderViewer(scope: 'all' | 'self' = 'self') {
+function renderViewer(scope: 'all' | 'self' = 'self', accessOnly = true) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -415,12 +415,67 @@ function renderViewer(scope: 'all' | 'self' = 'self') {
     <QueryClientProvider client={client}>
       <AuditLogViewer
         scope={scope}
-        accessOnly
+        accessOnly={accessOnly}
         currentTokenRef={'a'.repeat(64)}
       />
     </QueryClientProvider>
   )
 }
+
+it('explains invalid token identifiers without querying, then supports valid and cleared filters', async () => {
+  const get = vi.spyOn(api, 'get').mockResolvedValue({
+    data: { success: true, data: { items: [], total: 0 } },
+  })
+  renderViewer('all', false)
+  const user = userEvent.setup()
+  await screen.findByText('No records')
+  await user.click(screen.getByRole('button', { name: /Expand/ }))
+  const input = screen.getByRole('textbox', { name: 'Token identifier' })
+  get.mockClear()
+  await user.type(input, '1')
+  await user.click(screen.getByRole('button', { name: 'Search' }))
+  expect(input).toHaveAttribute('aria-invalid', 'true')
+  expect(input).toHaveAccessibleDescription(
+    'Token identifier must contain 64 lowercase hexadecimal characters.'
+  )
+  expect(get).not.toHaveBeenCalled()
+  expect(
+    screen.queryByText('Failed to load audit records')
+  ).not.toBeInTheDocument()
+
+  for (const invalid of [
+    'A'.repeat(64),
+    'g'.repeat(64),
+    'a'.repeat(65),
+    `${'a'.repeat(64)} `,
+  ]) {
+    fireEvent.change(input, { target: { value: invalid } })
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(get).not.toHaveBeenCalled()
+  }
+
+  fireEvent.change(input, { target: { value: 'a'.repeat(64) } })
+  await waitFor(() =>
+    expect(get).toHaveBeenLastCalledWith(
+      '/api/audit',
+      expect.objectContaining({
+        params: expect.objectContaining({ token_ref: 'a'.repeat(64) }),
+      })
+    )
+  )
+  expect(input).toHaveAttribute('aria-invalid', 'false')
+  await user.clear(input)
+  await user.click(screen.getByRole('button', { name: 'Search' }))
+  await waitFor(() =>
+    expect(get).toHaveBeenLastCalledWith(
+      '/api/audit',
+      expect.objectContaining({
+        params: expect.objectContaining({ token_ref: undefined }),
+      })
+    )
+  )
+})
 
 it('filters own access history by result, generation and time and resets pagination', async () => {
   const get = vi.spyOn(api, 'get').mockResolvedValue({

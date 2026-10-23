@@ -60,11 +60,15 @@ export function AuditLogViewer(props: {
     filters.start_timestamp !== undefined &&
     filters.end_timestamp !== undefined &&
     filters.start_timestamp > filters.end_timestamp
+  const invalidTokenRef = [params.token_ref, params.exclude_token_ref].some(
+    (value) => !!value && !/^[0-9a-f]{64}$/.test(value)
+  )
+  const validFilters = !invalidRange && !invalidTokenRef
   const query = useQuery({
     queryKey: ['audit', userId, props.scope, params],
     queryFn: async () =>
       requireServerSuccess(await getAuditLogs(props.scope, params)),
-    enabled: canQuery && !invalidRange,
+    enabled: canQuery && validFilters,
     retry: false,
   })
   const accessDenied =
@@ -79,14 +83,16 @@ export function AuditLogViewer(props: {
   const { table } = useDataTable({
     columns,
     data:
-      canQuery && !query.isError
+      canQuery && validFilters && !query.isError
         ? (query.data?.items ?? EMPTY_LOGS)
         : EMPTY_LOGS,
     getRowId: (entry) => entry.event_id,
-    totalCount: query.isError ? 0 : (query.data?.total ?? 0),
+    totalCount: query.isError || !validFilters ? 0 : (query.data?.total ?? 0),
     pagination: { pageIndex: filters.p - 1, pageSize: filters.page_size },
     onPaginationChange: (updater) => {
-      if (query.isFetching || query.isError || invalidRange || !canQuery) return
+      if (query.isFetching || query.isError || !validFilters || !canQuery) {
+        return
+      }
       setFilters((previous) => {
         const current = {
           pageIndex: previous.p - 1,
@@ -107,17 +113,27 @@ export function AuditLogViewer(props: {
   })
   const update = (patch: Partial<AuditFilters>) =>
     setFilters((previous) => ({ ...previous, ...patch, p: 1 }))
+  let emptyTitle = t('No records')
+  if (!validFilters) emptyTitle = t('Invalid audit filters')
+  else if (query.isError) emptyTitle = t('Failed to load audit records')
+  let emptyDescription: string | undefined
+  if (invalidTokenRef) {
+    emptyDescription = t(
+      'Token identifier must contain 64 lowercase hexadecimal characters.'
+    )
+  } else if (invalidRange) {
+    emptyDescription = t('End time must be after start time')
+  }
 
   return (
     <div className='flex h-full min-h-0 flex-col'>
       <DataTablePage
         table={table}
         columns={columns}
-        isLoading={query.isPending && canQuery && !invalidRange}
+        isLoading={query.isPending && canQuery && validFilters}
         isFetching={query.isFetching}
-        emptyTitle={
-          query.isError ? t('Failed to load audit records') : t('No records')
-        }
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
         hideMobile={props.accessOnly}
         paginationInFooter={!props.accessOnly}
         className='h-auto min-h-0 flex-1'
@@ -140,8 +156,9 @@ export function AuditLogViewer(props: {
                 update({})
               }}
               isFetching={query.isFetching}
+              invalidTokenRef={invalidTokenRef}
               onSearch={() => {
-                if (!invalidRange && canQuery) void query.refetch()
+                if (validFilters && canQuery) void query.refetch()
               }}
               onReset={() => {
                 setTokenScope(defaultTokenScope)

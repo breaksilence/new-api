@@ -24,8 +24,9 @@ import type {
   ProcessedUserChartData,
 } from '@/features/dashboard/types'
 import { getUserAvatarColor } from '@/lib/avatar'
-import { getCurrencyDisplay } from '@/lib/currency'
+import { formatQuotaWithCurrency, getCurrencyDisplay } from '@/lib/currency'
 import dayjs from '@/lib/dayjs'
+import { formatNumber } from '@/lib/format'
 import { formatChartTime, type TimeGranularity } from '@/lib/time'
 
 type TFunction = (key: string) => string
@@ -53,16 +54,21 @@ export function getDashboardChartColors(domainLength: number): string[] {
 
 function renderQuotaCompat(rawQuota: number, digits = 4): string {
   const { config, meta } = getCurrencyDisplay()
-  if (meta.kind === 'tokens') return rawQuota.toLocaleString()
+  if (meta.kind === 'tokens') return formatNumber(rawQuota)
   const usd = rawQuota / config.quotaPerUnit
   const rate = 'exchangeRate' in meta ? meta.exchangeRate : 1
-  const symbol = 'symbol' in meta ? meta.symbol : '¥' // 美元到人民币UI展示调整
   const value = usd * rate
-  const fixed = value.toFixed(digits)
-  if (Number.parseFloat(fixed) === 0 && rawQuota > 0 && value > 0) {
-    return symbol + Math.pow(10, -digits).toFixed(digits)
-  }
-  return symbol + fixed
+  const formatted = formatQuotaWithCurrency(rawQuota, {
+    digitsLarge: digits,
+    digitsSmall: digits,
+    minimumFractionDigits: digits,
+    abbreviate: false,
+  })
+  // The shared formatter floors tiny positive amounts to the display precision.
+  // Make that bound explicit instead of presenting it as an exact charge.
+  return value > 0 && value < Math.pow(10, -digits)
+    ? `<${formatted}`
+    : formatted
 }
 
 /**
@@ -857,21 +863,15 @@ export function processUserChartData(
                 formatVal(Number(datum?.rawQuota) || 0),
             },
           ],
-          updateContent: (
-            array: Array<{
-              key: string
-              value: string | number
-              datum?: Record<string, unknown>
-            }>
-          ) => {
-            for (let i = 0; i < array.length; i++) {
-              const rawQuota = array[i].datum?.rawQuota
-              const value =
-                rawQuota === undefined ? array[i].value : Number(rawQuota)
-              array[i].value = formatVal(Number(value) || 0)
-            }
-            return array
-          },
+        },
+        dimension: {
+          content: [
+            {
+              key: (datum: Record<string, unknown>) => datum?.User,
+              value: (datum: Record<string, unknown>) =>
+                formatVal(Number(datum?.rawQuota) || 0),
+            },
+          ],
         },
       },
       color: { specified: userColorMap },

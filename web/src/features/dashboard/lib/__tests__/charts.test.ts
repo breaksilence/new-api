@@ -16,12 +16,116 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { describe, expect, test } from 'vitest'
+import i18next from 'i18next'
+import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
 import type { QuotaDataItem } from '@/features/dashboard/types'
 import type { TimeGranularity } from '@/lib/time'
+import {
+  DEFAULT_CURRENCY_CONFIG,
+  useSystemConfigStore,
+} from '@/stores/system-config-store'
 
 import { processChartData, processUserChartData } from '../charts'
+
+describe('user consumption amount display', () => {
+  const originalConfig = useSystemConfigStore.getState().config
+  let originalLanguage: string
+  beforeEach(() => {
+    originalLanguage = i18next.language
+    useSystemConfigStore
+      .getState()
+      .setConfig({ currency: { ...DEFAULT_CURRENCY_CONFIG } })
+  })
+  afterEach(async () => {
+    useSystemConfigStore.setState({ config: originalConfig })
+    await i18next.changeLanguage(originalLanguage)
+  })
+
+  test.each([
+    { quota: 32, expected: '<¥0.01' },
+    { quota: 0, expected: '¥0.00' },
+    { quota: 5000, expected: '¥0.01' },
+    { quota: 40000, expected: '¥0.08' },
+  ])(
+    'formats quota $quota consistently in labels and both tooltip modes',
+    ({ quota, expected }) => {
+      const datum = { User: 'alice', rawQuota: quota }
+      const result = processUserChartData([
+        {
+          username: 'alice',
+          model_name: 'model-a',
+          created_at: 1767225600,
+          quota,
+          count: 1,
+        },
+      ])
+      const rank = result.spec_user_rank
+      expect(rank.label.formatMethod(quota)).toBe(expected)
+      expect(rank.tooltip.mark.content[0].value(datum)).toBe(expected)
+      expect(rank.tooltip.dimension.content[0].value(datum)).toBe(expected)
+      expect(rank.title.subtext).toBe(`Total: ${expected}`)
+    }
+  )
+})
+
+describe('dashboard display settings', () => {
+  const originalConfig = useSystemConfigStore.getState().config
+  let originalLanguage: string
+  beforeEach(() => {
+    originalLanguage = i18next.language
+    useSystemConfigStore
+      .getState()
+      .setConfig({ currency: { ...DEFAULT_CURRENCY_CONFIG } })
+  })
+  afterEach(async () => {
+    useSystemConfigStore.setState({ config: originalConfig })
+    await i18next.changeLanguage(originalLanguage)
+  })
+  test.each(['zhCN', 'zhTW', 'en', 'fr', 'ru', 'ja', 'vi', 'invalid_locale'])(
+    'preserves the configured monetary unit with interface language %s',
+    async (language) => {
+      await i18next.changeLanguage(language)
+      const result = processUserChartData([
+        {
+          username: 'alice',
+          model_name: 'model-a',
+          created_at: 1767225600,
+          quota: 32,
+          count: 1,
+        },
+      ])
+      expect(result.spec_user_rank.label.formatMethod(32)).toBe('<¥0.01')
+    }
+  )
+  test.each([
+    { type: 'CNY' as const, quota: 500000, expected: '¥7.00' },
+    { type: 'CUSTOM' as const, quota: 500000, expected: '¤ 2.00' },
+    { type: 'TOKENS' as const, quota: 32, expected: '32' },
+  ])(
+    'preserves $type currency conversion or raw-unit display',
+    ({ type, quota, expected }) => {
+      useSystemConfigStore.getState().setConfig({
+        currency: {
+          ...DEFAULT_CURRENCY_CONFIG,
+          quotaDisplayType: type,
+          usdExchangeRate: 7,
+          customCurrencyExchangeRate: 2,
+        },
+      })
+      const result = processUserChartData([
+        {
+          username: 'alice',
+          model_name: 'model-a',
+          created_at: 1767225600,
+          quota,
+          count: 1,
+        },
+      ])
+      expect(result.spec_user_rank.label.formatMethod(quota)).toBe(expected)
+    }
+  )
+})
 
 const cases: Array<{
   granularity: TimeGranularity

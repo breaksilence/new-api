@@ -542,8 +542,8 @@ it('shows the quota target and committed balances before operator information', 
   ).toBeTruthy()
   expect(within(dialog).getByText('Quota before adjustment')).toBeVisible()
   expect(within(dialog).getByText('Quota after adjustment')).toBeVisible()
-  expect(within(dialog).getByText('$1')).toBeVisible()
-  expect(within(dialog).getAllByText('-$1')).toHaveLength(2)
+  expect(within(dialog).getByText('¥1')).toBeVisible()
+  expect(within(dialog).getAllByText('-¥1')).toHaveLength(2)
   await user.click(within(dialog).getByRole('button', { name: 'Copy User ID' }))
   expect(copy).toHaveBeenCalledWith('42')
 })
@@ -572,7 +572,7 @@ it('shows failed quota attempts without claiming a balance change', async () => 
   expect(
     within(dialog).getByText('Insufficient permission to adjust this user')
   ).toBeVisible()
-  expect(within(dialog).getByText('$1')).toBeVisible()
+  expect(within(dialog).getByText('¥1')).toBeVisible()
   expect(within(dialog).queryByText('Quota before adjustment')).toBeNull()
   expect(within(dialog).queryByText('Quota after adjustment')).toBeNull()
   expect(dialog).not.toHaveTextContent('→')
@@ -596,7 +596,7 @@ it('distinguishes unchanged zero quota from missing or legacy balance metadata',
   )
   expect(unchanged.summary).toBe('Override user quota (ID: 42)')
   expect(unchanged.operation?.description).toBe(
-    'Requested quota: $0 · Quota unchanged · $0 → $0'
+    'Requested quota: ¥0 · Quota unchanged · ¥0 → ¥0'
   )
   const missing = buildAuditDetails(
     {

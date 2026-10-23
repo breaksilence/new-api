@@ -367,7 +367,7 @@ it('keeps prices and channel explanations readable in the mobile card and detail
     name: 'View pricing for catalog-only',
   })
   expect(within(price).getByText('1.25')).toHaveClass('whitespace-normal')
-  expect(within(price).getByText('USD / 1M tokens')).toHaveClass(
+  expect(within(price).getByText('CNY / 1M tokens')).toHaveClass(
     'whitespace-normal'
   )
   expect(screen.getByText('Channels 0 · Groups 0')).toHaveClass(
@@ -578,7 +578,7 @@ it.each([
     name: 'free-request',
     effective: { ModelPrice: 0 },
     catalog: { quota_type: 1, model_price: 0 },
-    text: 'Per-request0USD/request',
+    text: 'Per-request0CNY/request',
   },
   {
     name: 'free-tokens',

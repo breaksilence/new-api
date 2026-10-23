@@ -260,24 +260,20 @@ export function DataTableToolbar<TData>(props: DataTableToolbarProps<TData>) {
     />
   )
 
-  const filterChips = React.useMemo(
-    () =>
-      filters.map((filter) => {
-        const column = props.table.getColumn(filter.columnId)
-        if (!column) return null
-        return (
-          <DataTableFacetedFilter
-            key={filter.columnId}
-            column={column}
-            title={filter.title}
-            options={filter.options}
-            singleSelect={filter.singleSelect}
-          />
-        )
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [props.filters, props.table]
-  )
+  // Table and column references are stable while their filter state changes.
+  const filterChips = filters.map((filter) => {
+    const column = props.table.getColumn(filter.columnId)
+    if (!column) return null
+    return (
+      <DataTableFacetedFilter
+        key={filter.columnId}
+        column={column}
+        title={filter.title}
+        options={filter.options}
+        singleSelect={filter.singleSelect}
+      />
+    )
+  })
 
   const handleReset = () => {
     setIsSearchComposing(false)

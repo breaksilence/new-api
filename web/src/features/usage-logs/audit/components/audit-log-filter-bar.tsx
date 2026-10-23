@@ -17,9 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import type { Table } from '@tanstack/react-table'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Combobox } from '@/components/ui/combobox'
+import { FieldDescription } from '@/components/ui/field'
 
 import { CompactDateTimeRangePicker } from '../../components/compact-date-time-range-picker'
 import {
@@ -61,10 +63,12 @@ export function AuditLogFilterBar(props: {
   currentTokenRef?: string
   onTokenScopeChange: (value: string) => void
   isFetching: boolean
+  invalidTokenRef: boolean
   onSearch: () => void
   onReset: () => void
 }) {
   const { t } = useTranslation()
+  const tokenHelpId = useId()
   const dateFilter = (
     <LogsFilterField wide>
       <CompactDateTimeRangePicker
@@ -150,10 +154,26 @@ export function AuditLogFilterBar(props: {
                 aria-label={t('Token identifier')}
                 placeholder={t('Token identifier')}
                 value={props.filters.token_ref ?? ''}
+                aria-invalid={props.invalidTokenRef}
+                aria-describedby={tokenHelpId}
                 onChange={(event) =>
                   props.onChange({ token_ref: event.target.value || undefined })
                 }
               />
+              <FieldDescription
+                id={tokenHelpId}
+                className={
+                  props.invalidTokenRef ? 'text-destructive' : undefined
+                }
+              >
+                {props.invalidTokenRef
+                  ? t(
+                      'Token identifier must contain 64 lowercase hexadecimal characters.'
+                    )
+                  : t(
+                      'Copy the token identifier from audit details, not the API key.'
+                    )}
+              </FieldDescription>
             </LogsFilterField>
             <LogsFilterField>
               <LogsFilterInput

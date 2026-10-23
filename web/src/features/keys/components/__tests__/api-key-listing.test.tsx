@@ -39,10 +39,12 @@ import {
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
+import { useState } from 'react'
 import { I18nextProvider } from 'react-i18next'
 import { Toaster, toast } from 'sonner'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
+import { PageFooterProvider } from '@/components/layout/components/page-footer'
 import zh from '@/i18n/locales/zh.json'
 import { api } from '@/lib/api'
 import {
@@ -154,7 +156,7 @@ afterEach(() => {
 it('shows desktop remaining and used amounts side by side without labels, with the currency only in the header', () => {
   renderQuota()
   expect(
-    screen.getByRole('columnheader', { name: 'Quota ($)' })
+    screen.getByRole('columnheader', { name: 'Quota (¥)' })
   ).toBeInTheDocument()
   const trigger = screen.getByRole('button', {
     name: /Remaining 80; Remaining percentage 40%; Used amount 120/,
@@ -167,7 +169,7 @@ it('shows desktop remaining and used amounts side by side without labels, with t
   expect(within(trigger).getByText('80')).toHaveClass('text-left')
   expect(within(trigger).getByText('120')).toHaveClass('text-right')
   expect(trigger.parentElement).toHaveClass('max-w-45')
-  expect(trigger).not.toHaveTextContent('$')
+  expect(trigger).not.toHaveTextContent('¥')
   expect(trigger.querySelector('svg')).toBeNull()
   expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '40')
 })
@@ -295,9 +297,13 @@ it('keeps a long amount within its column while showing the full amount in detai
 })
 
 function KeysPage() {
+  const [footer, setFooter] = useState<HTMLDivElement | null>(null)
   return (
     <ApiKeysProvider>
-      <ApiKeysTable />
+      <PageFooterProvider container={footer}>
+        <ApiKeysTable />
+        <div ref={setFooter} />
+      </PageFooterProvider>
       <Toaster />
     </ApiKeysProvider>
   )
@@ -360,12 +366,57 @@ it('combines creation and last use while keeping expiry, models and IP restricti
   ).toBeInTheDocument()
   const timeCell = screen.getByRole('cell', { name: /Created.*Last Used/ })
   expect(within(timeCell).getByText('Last Used')).toBeInTheDocument()
-  const quotaHeader = screen.getByRole('columnheader', { name: 'Quota ($)' })
+  const quotaHeader = screen.getByRole('columnheader', { name: 'Quota (¥)' })
   const quotaTrigger = screen.getByRole('button', {
     name: /Remaining 80; Remaining percentage 40%; Used amount 120/,
   })
   expect(quotaHeader).not.toHaveClass('pr-8')
   expect(quotaTrigger.closest('td')).not.toHaveClass('pr-8')
+})
+
+it('queries status across pages, keeps the selection visible and resets to the unfiltered list', async () => {
+  await renderKeysPage()
+  vi.mocked(api.get).mockImplementation(async (url) => {
+    const params = new URL(url, 'http://localhost').searchParams
+    if (url.startsWith('/api/token/search') && params.get('status') === '2') {
+      const secondPage = params.get('p') === '2'
+      return {
+        data: {
+          success: true,
+          data: {
+            items: [
+              {
+                ...key,
+                id: secondPage ? 9 : 8,
+                name: secondPage ? 'disabled-second' : 'disabled-first',
+                status: 2,
+              },
+            ],
+            total: 21,
+          },
+        },
+      }
+    }
+    return { data: { success: true, data: { items: [key], total: 1 } } }
+  })
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Status' }))
+  await user.click(screen.getByRole('option', { name: 'Disabled' }))
+  await screen.findByText('disabled-first')
+  expect(screen.getByRole('button', { name: /^Status/ })).toHaveTextContent(
+    'Disabled'
+  )
+  expect(screen.getByRole('option', { name: 'Disabled' })).toHaveAttribute(
+    'aria-checked',
+    'true'
+  )
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: 'Go to next page' }))
+  await screen.findByText('disabled-second')
+  expect(screen.queryByText('disabled-first')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Reset' }))
+  await screen.findByText('production')
+  expect(screen.getByRole('button', { name: 'Status' })).toBeVisible()
 })
 
 it('restores dates hidden by the old default and preserves unrelated column preferences', async () => {
@@ -457,8 +508,8 @@ it('keeps full mobile information without group or quota section headings', asyn
   try {
     await renderKeysPage()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
-    expect(screen.queryByText('额度 ($)')).not.toBeInTheDocument()
-    expect(screen.getByText('($)')).toBeInTheDocument()
+    expect(screen.queryByText('额度 (¥)')).not.toBeInTheDocument()
+    expect(screen.getByText('(¥)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /剩余 80;/ })).toBeInTheDocument()
     expect(screen.getByText('80')).toBeInTheDocument()
     expect(screen.getByText('120')).toBeInTheDocument()
@@ -496,7 +547,7 @@ it('keeps mobile quota readable and opens complete model and IP restrictions by 
   const quota = screen.getByRole('button', {
     name: /Unlimited; Used amount 4,490.16/,
   })
-  expect(quota).toHaveTextContent('Remaining($)UnlimitedUsed amount4,490.16')
+  expect(quota).toHaveTextContent('Remaining(¥)UnlimitedUsed amount4,490.16')
   expect(quota.parentElement).toHaveClass('w-full')
   expect(quota.parentElement).not.toHaveClass('max-w-45')
   expect(quota.querySelector('[data-slot="api-key-quota-values"]')).toHaveClass(

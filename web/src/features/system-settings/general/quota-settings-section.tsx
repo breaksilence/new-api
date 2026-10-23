@@ -172,7 +172,7 @@ export function QuotaSettingsSection({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    {t('Wallet pre-consume bypass threshold (USD)')}
+                    {t('Wallet pre-consume bypass threshold (CNY)')}
                   </FormLabel>
                   <FormControl>
                     <Input
